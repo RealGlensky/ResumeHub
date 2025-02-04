@@ -12,6 +12,9 @@ interface ResumeViewerProps {
 export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Create a viewer URL using PDF.js
+  const viewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(resume.fileUrl)}`;
+
   return (
     <>
       <Button
@@ -31,25 +34,14 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
               <h2 className="text-xl font-semibold">{resume.title}</h2>
             </div>
 
-            <div className="flex-1 overflow-auto bg-muted rounded-lg">
-              <object
-                data={resume.fileUrl}
-                type="application/pdf"
-                className="w-full h-full"
-              >
-                <iframe
-                  src={resume.fileUrl}
-                  className="w-full h-full border-0"
-                  title={`PDF viewer for ${resume.title}`}
-                >
-                  <p>
-                    Your browser doesn't support embedded PDFs.
-                    <a href={resume.fileUrl} target="_blank" rel="noopener noreferrer">
-                      Click here to download the PDF
-                    </a>
-                  </p>
-                </iframe>
-              </object>
+            <div className="flex-1 overflow-hidden bg-muted rounded-lg">
+              <iframe
+                src={viewerUrl}
+                className="w-full h-full border-0"
+                title={`PDF viewer for ${resume.title}`}
+                sandbox="allow-scripts allow-same-origin allow-forms"
+                loading="lazy"
+              />
             </div>
           </div>
         </DialogContent>
