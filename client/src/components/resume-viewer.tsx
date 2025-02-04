@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Document, Page } from "react-pdf";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,9 @@ import type { Resume } from "@db/schema";
 
 // Configure PDF.js worker
 import { pdfjs } from 'react-pdf';
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url,
-).toString();
+
+// Use a CDN-hosted worker file for better compatibility
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -22,16 +21,28 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Reset states when dialog opens
+    if (isOpen) {
+      setError(null);
+      setIsLoading(true);
+      setPageNumber(1);
+    }
+  }, [isOpen]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
     setPageNumber(1);
     setError(null);
+    setIsLoading(false);
   }
 
   function onDocumentLoadError(error: Error) {
     console.error("Error loading PDF:", error);
-    setError("Failed to load PDF. Please make sure the file is accessible.");
+    setError("Failed to load PDF. Please try refreshing the page or using a different browser.");
+    setIsLoading(false);
   }
 
   function changePage(offset: number) {
@@ -96,19 +107,30 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
                   file={resume.fileUrl}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onLoadError={onDocumentLoadError}
-                  className="flex justify-center"
                   loading={
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                       Loading PDF...
                     </div>
                   }
+                  className="flex justify-center"
                 >
-                  <Page
-                    pageNumber={pageNumber}
-                    renderAnnotationLayer={mode === "create"}
-                    renderTextLayer={mode === "create"}
-                    className="shadow-lg"
-                  />
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      Loading PDF...
+                    </div>
+                  ) : (
+                    <Page
+                      pageNumber={pageNumber}
+                      renderAnnotationLayer={mode === "create"}
+                      renderTextLayer={mode === "create"}
+                      className="shadow-lg"
+                      loading={
+                        <div className="flex items-center justify-center p-4">
+                          Loading page...
+                        </div>
+                      }
+                    />
+                  )}
                 </Document>
               )}
             </div>
