@@ -9,7 +9,7 @@ import type { Resume } from "@db/schema";
 import { pdfjs } from 'react-pdf';
 
 // Use a CDN-hosted worker file for better compatibility
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 interface ResumeViewerProps {
   resume: Resume;
