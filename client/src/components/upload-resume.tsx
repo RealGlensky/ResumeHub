@@ -23,13 +23,13 @@ export function UploadResume() {
 
   const uploadMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      // For demo purposes, we'll use a publicly accessible PDF
       // In a real app, we'd upload the file to a storage service
-      // and get back a URL. For this demo, we'll create a fake URL
-      const fakeFileUrl = `https://storage.example.com/${data.file[0].name}`;
+      const demoFileUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
-        fileUrl: fakeFileUrl,
+        fileUrl: demoFileUrl,
         isPublic: data.isPublic,
       });
       return res.json();
