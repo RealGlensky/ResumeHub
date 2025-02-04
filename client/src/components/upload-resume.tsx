@@ -9,19 +9,24 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type FormData = {
   title: string;
-  file: FileList;
+  file: File[];
   isPublic: boolean;
 };
 
 export function UploadResume() {
-  const form = useForm<FormData>();
+  const form = useForm<FormData>({
+    defaultValues: {
+      title: "",
+      isPublic: false,
+    }
+  });
 
   const uploadMutation = useMutation({
     mutationFn: async (data: FormData) => {
       // In a real app, we'd upload the file to a storage service
       // and get back a URL. For this demo, we'll create a fake URL
       const fakeFileUrl = `https://storage.example.com/${data.file[0].name}`;
-      
+
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
         fileUrl: fakeFileUrl,
@@ -39,7 +44,7 @@ export function UploadResume() {
       <DialogHeader>
         <DialogTitle>Upload Resume</DialogTitle>
       </DialogHeader>
-      
+
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit((data) => uploadMutation.mutate(data))}
@@ -61,14 +66,19 @@ export function UploadResume() {
           <FormField
             control={form.control}
             name="file"
-            render={({ field: { onChange, ...field } }) => (
+            render={({ field: { onChange, value, ...field } }) => (
               <FormItem>
                 <FormLabel>File</FormLabel>
                 <FormControl>
                   <Input
                     type="file"
                     accept=".pdf"
-                    onChange={(e) => onChange(e.target.files)}
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files?.length) {
+                        onChange(Array.from(files));
+                      }
+                    }}
                     {...field}
                   />
                 </FormControl>
