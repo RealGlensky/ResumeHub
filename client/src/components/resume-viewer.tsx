@@ -7,12 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure worker
-const workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url,
-).toString();
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -44,12 +39,9 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setLoadError(null);
 
         console.log('Loading PDF from URL:', fileUrl);
-        const loadingTask = pdfjsLib.getDocument({
-          url: fileUrl,
-          worker: new Worker(workerSrc)
-        });
+        const loadingTask = pdfjsLib.getDocument(fileUrl);
 
-        loadingTask.onProgress = (progress) => {
+        loadingTask.onProgress = (progress: any) => {
           console.log('Loading progress:', progress.loaded, '/', progress.total);
         };
 
