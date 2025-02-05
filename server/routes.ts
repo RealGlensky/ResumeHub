@@ -397,6 +397,27 @@ export function registerRoutes(app: Express): Server {
     res.json(connections);
   });
 
+  app.get("/api/users/search", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const { query } = req.query;
+    if (!query || typeof query !== "string") {
+      return res.status(400).json({ error: "Search query is required" });
+    }
+
+    // Search for users by username, excluding the current user
+    const searchResults = await db
+      .select({
+        id: users.id,
+        username: users.username,
+      })
+      .from(users)
+      .where(eq(users.username, query))
+      .limit(10);
+
+    res.json(searchResults.filter(user => user.id !== req.user.id));
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;
