@@ -285,6 +285,9 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/network/invitations", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
+    const senderTable = users.as('sender');
+    const receiverTable = users.as('receiver');
+
     // Get both sent and received invitations with proper joins
     const invitations = await db
       .select({
@@ -294,25 +297,17 @@ export function registerRoutes(app: Express): Server {
         senderId: networkInvitations.senderId,
         receiverId: networkInvitations.receiverId,
         sender: {
-          id: { as: "sender_id" },
-          username: { as: "sender_username" },
+          id: senderTable.id,
+          username: senderTable.username,
         },
         receiver: {
-          id: { as: "receiver_id" },
-          username: { as: "receiver_username" },
+          id: receiverTable.id,
+          username: receiverTable.username,
         }
       })
       .from(networkInvitations)
-      .leftJoin(
-        users,
-        eq(networkInvitations.senderId, users.id),
-        { as: "sender" }
-      )
-      .leftJoin(
-        users,
-        eq(networkInvitations.receiverId, users.id),
-        { as: "receiver" }
-      )
+      .leftJoin(senderTable, eq(networkInvitations.senderId, senderTable.id))
+      .leftJoin(receiverTable, eq(networkInvitations.receiverId, receiverTable.id))
       .where(
         or(
           eq(networkInvitations.senderId, req.user.id),
