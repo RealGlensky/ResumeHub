@@ -8,8 +8,8 @@ import bodyParser from "body-parser";
 
 export function registerRoutes(app: Express): Server {
   // Configure body-parser to handle larger payloads
-  app.use(bodyParser.json({ limit: '10mb' }));
-  app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
+  app.use(bodyParser.json({ limit: '50mb' }));
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
   setupAuth(app);
 
