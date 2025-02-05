@@ -25,7 +25,7 @@ export function UploadResume() {
     mutationFn: async (data: FormData) => {
       // For demo purposes, we'll use a publicly accessible PDF
       // In a real app, we'd upload the file to a storage service
-      const demoFileUrl = "https://www.careers.govt.nz/assets/A-guide-to-job-applications-Careers-New-Zealand.pdf";
+      const demoFileUrl = "https://raw.githubusercontent.com/mozilla/pdf.js/master/web/compressed.tracemonkey-pldi-09.pdf";
 
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,

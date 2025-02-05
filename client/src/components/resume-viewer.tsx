@@ -11,9 +11,10 @@ interface ResumeViewerProps {
 
 export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   // Create a viewer URL using PDF.js with specific parameters
-  const viewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(resume.fileUrl)}&embedded=true`;
+  const viewerUrl = `https://mozilla.github.io/pdf.js/legacy/web/viewer.html?file=${encodeURIComponent(resume.fileUrl)}`;
 
   return (
     <>
@@ -35,13 +36,20 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
             </div>
 
             <div className="flex-1 overflow-hidden bg-muted rounded-lg">
-              <iframe
-                src={viewerUrl}
-                className="w-full h-full border-0"
-                title={`PDF viewer for ${resume.title}`}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
-                loading="lazy"
-              />
+              {loadError ? (
+                <div className="flex items-center justify-center h-full p-4 text-destructive">
+                  Failed to load PDF. Please try downloading it directly.
+                </div>
+              ) : (
+                <iframe
+                  src={viewerUrl}
+                  className="w-full h-full border-0"
+                  title={`PDF viewer for ${resume.title}`}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
+                  onError={() => setLoadError(true)}
+                  loading="lazy"
+                />
+              )}
             </div>
           </div>
         </DialogContent>
