@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { FileText, AlertCircle, Download } from "lucide-react";
 import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -14,22 +18,63 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [numPages, setNumPages] = useState(0);
+  const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
 
   // Get the absolute URL for the resume file
   const fileUrl = resume.fileUrl.startsWith('http') 
     ? resume.fileUrl 
     : `${window.location.origin}${resume.fileUrl}`;
 
-  // For PDF.js viewer
-  const viewerUrl = `https://mozilla.github.io/pdf.js/legacy/web/viewer.html?file=${encodeURIComponent(fileUrl)}`;
-
-  const handleIframeLoad = () => {
-    setIsLoading(false);
-  };
-
   const handleDownload = () => {
     window.open(fileUrl, '_blank');
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadPDF = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(false);
+
+        const pdf = await pdfjsLib.getDocument(fileUrl).promise;
+        setNumPages(pdf.numPages);
+
+        // Pre-render all pages
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const canvas = canvasRefs.current[pageNum - 1];
+
+          if (canvas) {
+            const viewport = page.getViewport({ scale: 1.5 });
+            const context = canvas.getContext('2d');
+
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            await page.render({
+              canvasContext: context!,
+              viewport: viewport
+            }).promise;
+          }
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading PDF:', error);
+        setLoadError(true);
+        setIsLoading(false);
+      }
+    };
+
+    loadPDF();
+  }, [isOpen, fileUrl]);
+
+  // Update canvas refs array when numPages changes
+  useEffect(() => {
+    canvasRefs.current = Array(numPages).fill(null);
+  }, [numPages]);
 
   return (
     <>
@@ -60,7 +105,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
             </Button>
           </DialogTitle>
 
-          <div className="flex-1 overflow-hidden bg-muted rounded-lg relative mt-4">
+          <div className="flex-1 overflow-y-auto bg-muted rounded-lg relative mt-4 p-4">
             {loadError ? (
               <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
                 <AlertCircle className="h-5 w-5" />
@@ -68,23 +113,22 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
               </div>
             ) : (
               <>
-                {isLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
                     <Skeleton className="w-full h-full" />
                   </div>
+                ) : (
+                  <div className="space-y-4">
+                    {Array.from({ length: numPages }, (_, i) => (
+                      <div key={i} className="flex justify-center">
+                        <canvas
+                          ref={el => canvasRefs.current[i] = el}
+                          className="shadow-lg"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 )}
-                <iframe
-                  src={viewerUrl}
-                  className="w-full h-full border-0"
-                  title={`PDF viewer for ${resume.title}`}
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
-                  onError={() => {
-                    setLoadError(true);
-                    setIsLoading(false);
-                  }}
-                  onLoad={handleIframeLoad}
-                  loading="lazy"
-                />
               </>
             )}
           </div>
