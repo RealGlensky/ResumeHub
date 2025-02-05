@@ -17,7 +17,7 @@ type ThreadedComment = Comment & {
   replies?: ThreadedComment[];
 };
 
-function CommentForm({ onSubmit, placeholder = "Add a comment..." }: { 
+function CommentForm({ onSubmit, placeholder = "Add a comment..." }: {
   onSubmit: (data: FormData) => void;
   placeholder?: string;
 }) {
@@ -26,7 +26,10 @@ function CommentForm({ onSubmit, placeholder = "Add a comment..." }: {
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit((data) => {
+          onSubmit(data);
+          form.reset();
+        })}
         className="space-y-4"
       >
         <FormField
@@ -55,9 +58,9 @@ function CommentForm({ onSubmit, placeholder = "Add a comment..." }: {
   );
 }
 
-function CommentItem({ comment, onReply }: { 
-  comment: ThreadedComment; 
-  onReply: (parentId: number) => void;
+function CommentItem({ comment, onReply }: {
+  comment: ThreadedComment;
+  onReply: (parentId: number, data: FormData) => void;
 }) {
   const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -85,7 +88,7 @@ function CommentItem({ comment, onReply }: {
         <div className="ml-8">
           <CommentForm
             onSubmit={(data) => {
-              onReply(comment.id);
+              onReply(comment.id, data);
               setShowReplyForm(false);
             }}
             placeholder="Write a reply..."
@@ -134,7 +137,7 @@ export function CommentSection({ resumeId }: { resumeId: string }) {
     commentMutation.mutate({ content: data.content });
   };
 
-  const handleReply = (parentId: number) => (data: FormData) => {
+  const handleReply = (parentId: number, data: FormData) => {
     commentMutation.mutate({ content: data.content, parentId });
   };
 
@@ -147,7 +150,7 @@ export function CommentSection({ resumeId }: { resumeId: string }) {
           <CommentItem
             key={comment.id}
             comment={comment}
-            onReply={(parentId) => handleReply(parentId)}
+            onReply={handleReply}
           />
         ))}
       </div>
