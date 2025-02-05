@@ -12,8 +12,8 @@ interface ResumeViewerProps {
 export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Create a viewer URL using PDF.js
-  const viewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(resume.fileUrl)}`;
+  // Create a viewer URL using PDF.js with specific parameters
+  const viewerUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(resume.fileUrl)}&embedded=true`;
 
   return (
     <>
@@ -39,7 +39,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
                 src={viewerUrl}
                 className="w-full h-full border-0"
                 title={`PDF viewer for ${resume.title}`}
-                sandbox="allow-scripts allow-same-origin allow-forms"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
                 loading="lazy"
               />
             </div>

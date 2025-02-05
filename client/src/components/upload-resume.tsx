@@ -25,7 +25,7 @@ export function UploadResume() {
     mutationFn: async (data: FormData) => {
       // For demo purposes, we'll use a publicly accessible PDF
       // In a real app, we'd upload the file to a storage service
-      const demoFileUrl = "https://arxiv.org/pdf/2201.00566.pdf";
+      const demoFileUrl = "https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/examples/learning/helloworld.pdf";
 
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
