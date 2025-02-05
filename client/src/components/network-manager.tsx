@@ -3,8 +3,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { NetworkInvitation, NetworkConnection } from "@db/schema";
-import { UserPlus, Check, X } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
+import { Check, X } from "lucide-react";
+
+type NetworkInvitation = {
+  id: number;
+  status: string;
+  createdAt: string;
+  sender: {
+    id: number;
+    username: string;
+  };
+};
+
+type NetworkConnection = {
+  id: number;
+  createdAt: string;
+  connectedUser: {
+    id: number;
+    username: string;
+  };
+};
 
 export function NetworkManager() {
   const { data: invitations = [] } = useQuery<NetworkInvitation[]>({
@@ -17,7 +36,9 @@ export function NetworkManager() {
 
   const handleInvitation = useMutation({
     mutationFn: async ({ id, action }: { id: number; action: 'accept' | 'reject' }) => {
-      return apiRequest(`/api/network/invitations/${id}/${action}`, { method: "POST" });
+      return apiRequest(`/api/network/invitations/${id}/${action}`, {
+        method: "POST",
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
@@ -101,7 +122,7 @@ export function NetworkManager() {
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
                   <div>
-                    <p className="font-medium">{connection.user.username}</p>
+                    <p className="font-medium">{connection.connectedUser.username}</p>
                     <p className="text-sm text-muted-foreground">Connected</p>
                   </div>
                 </div>
