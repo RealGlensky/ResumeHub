@@ -4,8 +4,13 @@ import { setupAuth } from "./auth";
 import { db } from "@db";
 import { resumes, jobOffers, comments } from "@db/schema";
 import { eq } from "drizzle-orm";
+import bodyParser from "body-parser";
 
 export function registerRoutes(app: Express): Server {
+  // Configure body-parser to handle larger payloads
+  app.use(bodyParser.json({ limit: '50mb' }));
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+
   setupAuth(app);
 
   // Resume routes
@@ -39,12 +44,12 @@ export function registerRoutes(app: Express): Server {
       .from(resumes)
       .where(eq(resumes.id, req.params.id))
       .limit(1);
-    
+
     if (!resume) return res.sendStatus(404);
     if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
       return res.sendStatus(403);
     }
-    
+
     res.json(resume);
   });
 
@@ -70,7 +75,7 @@ export function registerRoutes(app: Express): Server {
       .from(resumes)
       .where(eq(resumes.id, req.params.id))
       .limit(1);
-    
+
     if (!resume) return res.sendStatus(404);
     if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
       return res.sendStatus(403);
@@ -104,7 +109,7 @@ export function registerRoutes(app: Express): Server {
       .from(resumes)
       .where(eq(resumes.id, req.params.id))
       .limit(1);
-    
+
     if (!resume) return res.sendStatus(404);
     if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
       return res.sendStatus(403);
