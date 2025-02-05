@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type FormData = {
   title: string;
@@ -13,7 +14,10 @@ type FormData = {
   isPublic: boolean;
 };
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
+
 export function UploadResume() {
+  const { toast } = useToast();
   const form = useForm<FormData>({
     defaultValues: {
       title: "",
@@ -26,6 +30,10 @@ export function UploadResume() {
       const file = data.file[0];
       if (!file) {
         throw new Error('Please select a PDF file');
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error('File size must be less than 5MB');
       }
 
       // Convert the file to a data URL
@@ -45,6 +53,17 @@ export function UploadResume() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      toast({
+        title: "Success",
+        description: "Resume uploaded successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -77,7 +96,7 @@ export function UploadResume() {
             name="file"
             render={({ field: { onChange, value, ...field } }) => (
               <FormItem>
-                <FormLabel>File</FormLabel>
+                <FormLabel>File (Max 5MB)</FormLabel>
                 <FormControl>
                   <Input
                     type="file"
@@ -85,6 +104,16 @@ export function UploadResume() {
                     onChange={(e) => {
                       const files = e.target.files;
                       if (files?.length) {
+                        const file = files[0];
+                        if (file.size > MAX_FILE_SIZE) {
+                          toast({
+                            title: "Error",
+                            description: "File size must be less than 5MB",
+                            variant: "destructive",
+                          });
+                          e.target.value = '';
+                          return;
+                        }
                         onChange(files);
                       }
                     }}
