@@ -27,13 +27,13 @@ export function UploadResume() {
     mutationFn: async (data: FormData) => {
       const file = data.file[0];
 
-      // Convert file to base64 data URL
-      const fileUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-      });
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('File size should be less than 5MB');
+      }
+
+      // Create a URL for the file
+      const fileUrl = URL.createObjectURL(file);
 
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
@@ -48,7 +48,6 @@ export function UploadResume() {
         title: "Resume uploaded successfully",
         description: "Your resume has been uploaded and is ready for viewing.",
       });
-      form.reset();
     },
     onError: (error: Error) => {
       toast({
