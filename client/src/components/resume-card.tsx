@@ -21,10 +21,7 @@ export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: numb
 
   const sendInvitation = useMutation({
     mutationFn: async (receiverId: number) => {
-      return apiRequest("/api/network/invite", {
-        method: "POST",
-        body: { receiverId },
-      });
+      return apiRequest("POST", "/api/network/invite", { receiverId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });

@@ -53,9 +53,7 @@ export function NetworkManager() {
 
   const handleInvitation = useMutation({
     mutationFn: async ({ id, action }: { id: number; action: "accept" | "reject" }) => {
-      return apiRequest(`/api/network/invitations/${id}/${action}`, {
-        method: "POST",
-      });
+      return apiRequest("POST", `/api/network/invitations/${id}/${action}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
@@ -65,10 +63,7 @@ export function NetworkManager() {
 
   const sendInvitation = useMutation({
     mutationFn: async (receiverId: number) => {
-      return apiRequest("/api/network/invite", {
-        method: "POST",
-        body: { receiverId },
-      });
+      return apiRequest("POST", "/api/network/invite", { receiverId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
