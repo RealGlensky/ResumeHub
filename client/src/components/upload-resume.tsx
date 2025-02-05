@@ -6,7 +6,6 @@ import { Switch } from "@/components/ui/switch";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 
 type FormData = {
   title: string;
@@ -15,7 +14,6 @@ type FormData = {
 };
 
 export function UploadResume() {
-  const { toast } = useToast();
   const form = useForm<FormData>({
     defaultValues: {
       title: "",
@@ -25,39 +23,18 @@ export function UploadResume() {
 
   const uploadMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const file = data.file[0];
-      if (!file) {
-        throw new Error('Please select a PDF file');
-      }
-
-      // Convert the file to a data URL
-      const fileUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-      });
+      // For demo purposes, we'll use a publicly accessible PDF
+      const demoFileUrl = "https://raw.githubusercontent.com/mozilla/pdf.js/master/web/compressed.tracemonkey-pldi-09.pdf";
 
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
-        fileUrl,
+        fileUrl: demoFileUrl,
         isPublic: data.isPublic,
       });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
-      toast({
-        title: "Success",
-        description: "Resume uploaded successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
     },
   });
 
