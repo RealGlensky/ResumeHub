@@ -48,11 +48,6 @@ export function registerRoutes(app: Express): Server {
   // Serve uploaded files statically
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-  // Serve PDF.js worker file
-  app.get('/pdf.worker.min.js', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'node_modules/pdfjs-dist/build/pdf.worker.min.js'));
-  });
-
   setupAuth(app);
 
   // Resume routes
