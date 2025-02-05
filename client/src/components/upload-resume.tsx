@@ -49,12 +49,6 @@ export function UploadResume() {
         fileUrl,
         isPublic: data.isPublic,
       });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to upload resume');
-      }
-
       return res.json();
     },
     onSuccess: () => {
@@ -63,7 +57,6 @@ export function UploadResume() {
         title: "Success",
         description: "Resume uploaded successfully",
       });
-      form.reset();
     },
     onError: (error: Error) => {
       toast({
@@ -152,7 +145,7 @@ export function UploadResume() {
             className="w-full"
             disabled={uploadMutation.isPending}
           >
-            {uploadMutation.isPending ? "Uploading..." : "Upload"}
+            Upload
           </Button>
         </form>
       </Form>
