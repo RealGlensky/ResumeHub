@@ -14,8 +14,6 @@ type FormData = {
   isPublic: boolean;
 };
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
-
 export function UploadResume() {
   const { toast } = useToast();
   const form = useForm<FormData>({
@@ -30,10 +28,6 @@ export function UploadResume() {
       const file = data.file[0];
       if (!file) {
         throw new Error('Please select a PDF file');
-      }
-
-      if (file.size > MAX_FILE_SIZE) {
-        throw new Error('File size must be less than 5MB');
       }
 
       // Convert the file to a data URL
@@ -96,7 +90,7 @@ export function UploadResume() {
             name="file"
             render={({ field: { onChange, value, ...field } }) => (
               <FormItem>
-                <FormLabel>File (Max 5MB)</FormLabel>
+                <FormLabel>File</FormLabel>
                 <FormControl>
                   <Input
                     type="file"
@@ -104,16 +98,6 @@ export function UploadResume() {
                     onChange={(e) => {
                       const files = e.target.files;
                       if (files?.length) {
-                        const file = files[0];
-                        if (file.size > MAX_FILE_SIZE) {
-                          toast({
-                            title: "Error",
-                            description: "File size must be less than 5MB",
-                            variant: "destructive",
-                          });
-                          e.target.value = '';
-                          return;
-                        }
                         onChange(files);
                       }
                     }}
