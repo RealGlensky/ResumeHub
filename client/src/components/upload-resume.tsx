@@ -32,8 +32,13 @@ export function UploadResume() {
         throw new Error('File size should be less than 5MB');
       }
 
-      // Create a URL for the file
-      const fileUrl = URL.createObjectURL(file);
+      // Convert file to base64 data URL
+      const fileUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
 
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
@@ -48,6 +53,7 @@ export function UploadResume() {
         title: "Resume uploaded successfully",
         description: "Your resume has been uploaded and is ready for viewing.",
       });
+      form.reset();
     },
     onError: (error: Error) => {
       toast({
