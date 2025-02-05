@@ -32,17 +32,12 @@ export function UploadResume() {
         throw new Error('File size should be less than 5MB');
       }
 
-      // Convert file to base64 data URL
-      const reader = new FileReader();
-      const fileDataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-      });
+      // Create a URL for the file
+      const fileUrl = URL.createObjectURL(file);
 
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
-        fileUrl: fileDataUrl,
+        fileUrl,
         isPublic: data.isPublic,
       });
       return res.json();
@@ -131,7 +126,7 @@ export function UploadResume() {
             className="w-full"
             disabled={uploadMutation.isPending}
           >
-            {uploadMutation.isPending ? "Uploading..." : "Upload"}
+            Upload
           </Button>
         </form>
       </Form>
