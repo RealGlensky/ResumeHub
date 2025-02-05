@@ -5,28 +5,78 @@ import { db } from "@db";
 import { resumes, jobOffers, comments } from "@db/schema";
 import { eq } from "drizzle-orm";
 import bodyParser from "body-parser";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import express from "express";
+
+// Configure multer for handling file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    // Ensure uploads directory exists
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('Only PDF files are allowed'));
+    }
+    cb(null, true);
+  }
+});
 
 export function registerRoutes(app: Express): Server {
   // Configure body-parser to handle larger payloads
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
+  // Serve uploaded files statically
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
   setupAuth(app);
 
   // Resume routes
-  app.post("/api/resumes", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    const { title, fileUrl, isPublic } = req.body;
-    const [resume] = await db
-      .insert(resumes)
-      .values({
-        title,
-        fileUrl,
-        isPublic,
-        userId: req.user.id,
-      })
-      .returning();
-    res.json(resume);
+  app.post("/api/resumes", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.sendStatus(401);
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+      const { title, isPublic } = req.body;
+      if (!title) return res.status(400).json({ error: 'Title is required' });
+
+      // Generate the file URL
+      const fileUrl = `/uploads/${req.file.filename}`;
+
+      const [resume] = await db
+        .insert(resumes)
+        .values({
+          title,
+          fileUrl,
+          isPublic: isPublic === 'true',
+          userId: req.user.id,
+        })
+        .returning();
+
+      res.json(resume);
+    } catch (error) {
+      console.error('Error uploading resume:', error);
+      res.status(500).json({ error: 'Failed to upload resume' });
+    }
   });
 
   app.get("/api/resumes", async (req, res) => {
