@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 type FormData = {
   title: string;
@@ -14,6 +15,7 @@ type FormData = {
 };
 
 export function UploadResume() {
+  const { toast } = useToast();
   const form = useForm<FormData>({
     defaultValues: {
       title: "",
@@ -24,27 +26,35 @@ export function UploadResume() {
   const uploadMutation = useMutation({
     mutationFn: async (data: FormData) => {
       const file = data.file[0];
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          try {
-            const fileUrl = reader.result as string;
-            const res = await apiRequest("POST", "/api/resumes", {
-              title: data.title,
-              fileUrl,
-              isPublic: data.isPublic,
-            });
-            resolve(res.json());
-          } catch (error) {
-            reject(error);
-          }
-        };
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
+
+      // Check file size (limit to 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('File size should be less than 5MB');
+      }
+
+      // Create a URL for the file
+      const fileUrl = URL.createObjectURL(file);
+
+      const res = await apiRequest("POST", "/api/resumes", {
+        title: data.title,
+        fileUrl,
+        isPublic: data.isPublic,
       });
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      toast({
+        title: "Resume uploaded successfully",
+        description: "Your resume has been uploaded and is ready for viewing.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
