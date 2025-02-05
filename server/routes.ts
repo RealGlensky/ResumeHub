@@ -291,6 +291,7 @@ export function registerRoutes(app: Express): Server {
         id: networkInvitations.id,
         status: networkInvitations.status,
         createdAt: networkInvitations.createdAt,
+        senderId: networkInvitations.senderId,
         sender: {
           id: users.id,
           username: users.username,
@@ -306,7 +307,13 @@ export function registerRoutes(app: Express): Server {
       )
       .orderBy(networkInvitations.createdAt);
 
-    res.json(invitations);
+    // Transform the data to include whether the current user sent or received the invitation
+    const transformedInvitations = invitations.map(invitation => ({
+      ...invitation,
+      type: invitation.senderId === req.user.id ? 'sent' : 'received'
+    }));
+
+    res.json(transformedInvitations);
   });
 
   app.post("/api/network/invitations/:id/:action", async (req, res) => {

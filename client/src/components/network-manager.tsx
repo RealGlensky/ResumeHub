@@ -11,6 +11,7 @@ type NetworkInvitation = {
   id: number;
   status: string;
   createdAt: string;
+  type: 'sent' | 'received';
   sender: {
     id: number;
     username: string;
@@ -71,9 +72,13 @@ export function NetworkManager() {
     },
   });
 
+  // Split invitations into sent and received
+  const receivedInvitations = invitations.filter(inv => inv.type === 'received' && inv.status === 'pending');
+  const sentInvitations = invitations.filter(inv => inv.type === 'sent' && inv.status === 'pending');
+
   return (
     <div className="space-y-6">
-      {/* Search and Invite Section */}
+      {/* Search and Invite Section remains the same */}
       <Card>
         <CardHeader>
           <CardTitle>Find Users</CardTitle>
@@ -115,65 +120,91 @@ export function NetworkManager() {
         </CardContent>
       </Card>
 
-      {/* Invitations Section */}
+      {/* Received Invitations Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Network Invitations</CardTitle>
+          <CardTitle>Received Invitations</CardTitle>
         </CardHeader>
         <CardContent>
-          {invitations.length === 0 ? (
+          {receivedInvitations.length === 0 ? (
             <p className="text-muted-foreground">No pending invitations</p>
           ) : (
             <div className="space-y-4">
-              {invitations
-                .filter((inv) => inv.status === "pending")
-                .map((invitation) => (
-                  <div
-                    key={invitation.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {invitation.sender.username}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        wants to connect with you
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          handleInvitation.mutate({
-                            id: invitation.id,
-                            action: "accept",
-                          })
-                        }
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Accept
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          handleInvitation.mutate({
-                            id: invitation.id,
-                            action: "reject",
-                          })
-                        }
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Reject
-                      </Button>
-                    </div>
+              {receivedInvitations.map((invitation) => (
+                <div
+                  key={invitation.id}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {invitation.sender.username}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      wants to connect with you
+                    </p>
                   </div>
-                ))}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        handleInvitation.mutate({
+                          id: invitation.id,
+                          action: "accept",
+                        })
+                      }
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        handleInvitation.mutate({
+                          id: invitation.id,
+                          action: "reject",
+                        })
+                      }
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Sent Invitations Section */}
+      {sentInvitations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Sent Invitations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {sentInvitations.map((invitation) => (
+                <div
+                  key={invitation.id}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium">
+                      Invitation sent to {invitation.sender.username}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Pending response
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Connections Section */}
       <Card>
