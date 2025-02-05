@@ -22,6 +22,12 @@ export function registerRoutes(app: Express): Server {
 
   setupAuth(app);
 
+  // Set response headers to handle large files
+  app.use((req, res, next) => {
+    res.setHeader('nginx_client_max_body_size', '5m');
+    next();
+  });
+
   // Serve PDF files from uploads directory
   app.get("/uploads/:filename", async (req, res) => {
     const filePath = path.join(uploadsDir, req.params.filename);
