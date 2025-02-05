@@ -38,15 +38,15 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setIsLoading(true);
         setLoadError(null);
 
-        console.log('Loading PDF from URL:', fileUrl);
-        const loadingTask = pdfjsLib.getDocument(fileUrl);
-
-        loadingTask.onProgress = (progress: any) => {
-          console.log('Loading progress:', progress.loaded, '/', progress.total);
-        };
+        // Create a new loading task
+        const loadingTask = pdfjsLib.getDocument({
+          url: fileUrl,
+          disableWorker: false,
+          enableXfa: true,
+          cMapPacked: true,
+        });
 
         const pdf = await loadingTask.promise;
-        console.log('PDF loaded successfully, pages:', pdf.numPages);
         setNumPages(pdf.numPages);
 
         // Pre-render all pages
