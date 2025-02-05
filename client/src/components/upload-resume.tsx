@@ -23,16 +23,26 @@ export function UploadResume() {
 
   const uploadMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // Create a URL for the uploaded PDF file
+      // Create a data URL for the uploaded PDF file
       const file = data.file[0];
-      const fileUrl = URL.createObjectURL(file);
-
-      const res = await apiRequest("POST", "/api/resumes", {
-        title: data.title,
-        fileUrl,
-        isPublic: data.isPublic,
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const fileUrl = reader.result as string;
+            const res = await apiRequest("POST", "/api/resumes", {
+              title: data.title,
+              fileUrl,
+              isPublic: data.isPublic,
+            });
+            resolve(res.json());
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
       });
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });

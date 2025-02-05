@@ -13,8 +13,10 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
-  // Create a viewer URL using PDF.js with specific parameters
-  const viewerUrl = `https://mozilla.github.io/pdf.js/legacy/web/viewer.html?file=${encodeURIComponent(resume.fileUrl)}`;
+  // Check if the URL is a data URL or an external URL
+  const viewerUrl = resume.fileUrl.startsWith('data:') 
+    ? resume.fileUrl 
+    : `https://mozilla.github.io/pdf.js/legacy/web/viewer.html?file=${encodeURIComponent(resume.fileUrl)}`;
 
   return (
     <>
