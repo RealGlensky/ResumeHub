@@ -285,6 +285,9 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/network/invitations", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
+    const senderAlias = "sender_users";
+    const receiverAlias = "receiver_users";
+
     // Get both sent and received invitations with proper joins
     const invitations = await db
       .select({
