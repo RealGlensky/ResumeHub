@@ -13,10 +13,11 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
-  // Check if the URL is a data URL or an external URL
-  const viewerUrl = resume.fileUrl.startsWith('data:') 
+  // Use the base URL of the current page to construct the full URL
+  const baseUrl = window.location.origin;
+  const pdfUrl = resume.fileUrl.startsWith('http') 
     ? resume.fileUrl 
-    : `https://mozilla.github.io/pdf.js/legacy/web/viewer.html?file=${encodeURIComponent(resume.fileUrl)}`;
+    : `${baseUrl}${resume.fileUrl}`;
 
   return (
     <>
@@ -44,7 +45,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
                 </div>
               ) : (
                 <iframe
-                  src={viewerUrl}
+                  src={`https://mozilla.github.io/pdf.js/legacy/web/viewer.html?file=${encodeURIComponent(pdfUrl)}`}
                   className="w-full h-full border-0"
                   title={`PDF viewer for ${resume.title}`}
                   sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
