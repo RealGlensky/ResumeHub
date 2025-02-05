@@ -23,15 +23,25 @@ export function UploadResume() {
 
   const uploadMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // For demo purposes, we'll use a publicly accessible PDF
-      const demoFileUrl = "https://raw.githubusercontent.com/mozilla/pdf.js/master/web/compressed.tracemonkey-pldi-09.pdf";
-
-      const res = await apiRequest("POST", "/api/resumes", {
-        title: data.title,
-        fileUrl: demoFileUrl,
-        isPublic: data.isPublic,
+      const file = data.file[0];
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const fileUrl = reader.result as string;
+            const res = await apiRequest("POST", "/api/resumes", {
+              title: data.title,
+              fileUrl,
+              isPublic: data.isPublic,
+            });
+            resolve(res.json());
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
       });
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
