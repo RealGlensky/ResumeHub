@@ -304,12 +304,12 @@ export function registerRoutes(app: Express): Server {
       })
       .from(networkInvitations)
       .leftJoin(
-        users.as('sender'),
-        eq(networkInvitations.senderId, users.as('sender').id)
+        users,
+        eq(networkInvitations.senderId, users.id)
       )
       .leftJoin(
-        users.as('receiver'),
-        eq(networkInvitations.receiverId, users.as('receiver').id)
+        users,
+        eq(networkInvitations.receiverId, users.id)
       )
       .where(
         or(
