@@ -32,9 +32,15 @@ export function UploadResume() {
         throw new Error('File size should be less than 5MB');
       }
 
-      // Create a URL for the file
-      const fileUrl = URL.createObjectURL(file);
+      // Create a blob URL for the file that will persist
+      const reader = new FileReader();
+      const filePromise = new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
+      const fileUrl = await filePromise;
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
         fileUrl,
