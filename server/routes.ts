@@ -154,6 +154,31 @@ export function registerRoutes(app: Express): Server {
     res.json(comment);
   });
 
+  app.patch("/api/resumes/:resumeId/comments/:commentId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const { content } = req.body;
+    const commentId = parseInt(req.params.commentId);
+
+    // First check if the comment exists and belongs to the user
+    const [existingComment] = await db
+      .select()
+      .from(comments)
+      .where(eq(comments.id, commentId))
+      .limit(1);
+
+    if (!existingComment) return res.sendStatus(404);
+    if (existingComment.userId !== req.user.id) return res.sendStatus(403);
+
+    const [updatedComment] = await db
+      .update(comments)
+      .set({ content })
+      .where(eq(comments.id, commentId))
+      .returning();
+
+    res.json(updatedComment);
+  });
+
   app.get("/api/resumes/:id/comments", async (req, res) => {
     const [resume] = await db
       .select()

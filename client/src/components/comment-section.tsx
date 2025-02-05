@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
@@ -5,9 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MessageSquare, CornerDownRight } from "lucide-react";
+import { MessageSquare, CornerDownRight, Pencil } from "lucide-react";
 import type { Comment } from "@db/schema";
-import { useState } from "react";
 
 type FormData = {
   content: string;
@@ -17,11 +17,16 @@ type ThreadedComment = Comment & {
   replies?: ThreadedComment[];
 };
 
-function CommentForm({ onSubmit, placeholder = "Add a comment..." }: {
+function CommentForm({ onSubmit, placeholder = "Add a comment...", defaultValue = "" }: {
   onSubmit: (data: FormData) => void;
   placeholder?: string;
+  defaultValue?: string;
 }) {
-  const form = useForm<FormData>();
+  const form = useForm<FormData>({
+    defaultValues: {
+      content: defaultValue
+    }
+  });
 
   return (
     <Form {...form}>
@@ -51,37 +56,64 @@ function CommentForm({ onSubmit, placeholder = "Add a comment..." }: {
           type="submit"
           size="sm"
         >
-          Post Comment
+          {defaultValue ? "Save Changes" : "Post Comment"}
         </Button>
       </form>
     </Form>
   );
 }
 
-function CommentItem({ comment, onReply }: {
+function CommentItem({ comment, onReply, onEdit }: {
   comment: ThreadedComment;
   onReply: (parentId: number, data: FormData) => void;
+  onEdit: (commentId: number, data: FormData) => void;
 }) {
   const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const isOwnComment = comment.userId === user?.id;
 
   return (
     <div className="space-y-2">
       <div className="p-3 bg-secondary rounded-lg">
         <div className="flex items-center justify-between mb-2">
           <div className="font-medium">
-            {comment.userId === user?.id ? "You" : "User"}
+            {isOwnComment ? "You" : "User"}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowReplyForm(!showReplyForm)}
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Reply
-          </Button>
+          <div className="flex items-center gap-2">
+            {isOwnComment && !isEditing && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowReplyForm(!showReplyForm)}
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Reply
+            </Button>
+          </div>
         </div>
-        <div className="text-sm">{comment.content}</div>
+        {isEditing ? (
+          <CommentForm
+            onSubmit={(data) => {
+              onEdit(comment.id, data);
+              setIsEditing(false);
+            }}
+            defaultValue={comment.content}
+            placeholder="Edit your comment..."
+          />
+        ) : (
+          <div className="text-sm">{comment.content}</div>
+        )}
       </div>
 
       {showReplyForm && (
@@ -102,7 +134,11 @@ function CommentItem({ comment, onReply }: {
             <div key={reply.id} className="flex items-start gap-2">
               <CornerDownRight className="h-4 w-4 mt-3 text-muted-foreground" />
               <div className="flex-1">
-                <CommentItem comment={reply} onReply={onReply} />
+                <CommentItem 
+                  comment={reply} 
+                  onReply={onReply}
+                  onEdit={onEdit}
+                />
               </div>
             </div>
           ))}
@@ -133,12 +169,30 @@ export function CommentSection({ resumeId }: { resumeId: string }) {
     },
   });
 
+  const editCommentMutation = useMutation({
+    mutationFn: async ({ commentId, content }: { commentId: number; content: string }) => {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/resumes/${resumeId}/comments/${commentId}`,
+        { content }
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/resumes/${resumeId}/comments`] });
+    },
+  });
+
   const handleComment = (data: FormData) => {
     commentMutation.mutate({ content: data.content });
   };
 
   const handleReply = (parentId: number, data: FormData) => {
     commentMutation.mutate({ content: data.content, parentId });
+  };
+
+  const handleEdit = (commentId: number, data: FormData) => {
+    editCommentMutation.mutate({ commentId, content: data.content });
   };
 
   return (
@@ -151,6 +205,7 @@ export function CommentSection({ resumeId }: { resumeId: string }) {
             key={comment.id}
             comment={comment}
             onReply={handleReply}
+            onEdit={handleEdit}
           />
         ))}
       </div>
