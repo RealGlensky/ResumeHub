@@ -9,7 +9,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 type FormData = {
   title: string;
-  file: File[];
+  file: FileList;
   isPublic: boolean;
 };
 
@@ -23,13 +23,13 @@ export function UploadResume() {
 
   const uploadMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // For demo purposes, we'll use a publicly accessible PDF
-      // In a real app, we'd upload the file to a storage service
-      const demoFileUrl = "https://raw.githubusercontent.com/mozilla/pdf.js/master/web/compressed.tracemonkey-pldi-09.pdf";
+      // Create a URL for the uploaded PDF file
+      const file = data.file[0];
+      const fileUrl = URL.createObjectURL(file);
 
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
-        fileUrl: demoFileUrl,
+        fileUrl,
         isPublic: data.isPublic,
       });
       return res.json();
@@ -76,7 +76,7 @@ export function UploadResume() {
                     onChange={(e) => {
                       const files = e.target.files;
                       if (files?.length) {
-                        onChange(Array.from(files));
+                        onChange(files);
                       }
                     }}
                     {...field}
