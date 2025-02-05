@@ -19,6 +19,22 @@ export const resumes = pgTable("resumes", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const networkInvitations = pgTable("network_invitations", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").notNull().references(() => users.id),
+  receiverId: integer("receiver_id").notNull().references(() => users.id),
+  status: text("status").notNull().default('pending'), // pending, accepted, rejected
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const networkConnections = pgTable("network_connections", {
+  id: serial("id").primaryKey(),
+  userId1: integer("user_id_1").notNull().references(() => users.id),
+  userId2: integer("user_id_2").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const jobOffers = pgTable("job_offers", {
   id: serial("id").primaryKey(),
   resumeId: uuid("resume_id").notNull().references(() => resumes.id),
@@ -37,10 +53,29 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Update user relations to include network connections
+export const userRelations = relations(users, ({ many }) => ({
+  resumes: many(resumes),
+  sentInvitations: many(networkInvitations, { relationName: "sender_invitations", references: [users.id], foreignKey: networkInvitations.senderId }),
+  receivedInvitations: many(networkInvitations, { relationName: "receiver_invitations", references: [users.id], foreignKey: networkInvitations.receiverId }),
+  connections1: many(networkConnections, { relationName: "user_connections_1", references: [users.id], foreignKey: networkConnections.userId1 }),
+  connections2: many(networkConnections, { relationName: "user_connections_2", references: [users.id], foreignKey: networkConnections.userId2 }),
+}));
+
 export const resumeRelations = relations(resumes, ({ one, many }) => ({
   user: one(users, { fields: [resumes.userId], references: [users.id] }),
   jobOffers: many(jobOffers),
   comments: many(comments),
+}));
+
+export const networkInvitationRelations = relations(networkInvitations, ({ one }) => ({
+  sender: one(users, { fields: [networkInvitations.senderId], references: [users.id] }),
+  receiver: one(users, { fields: [networkInvitations.receiverId], references: [users.id] }),
+}));
+
+export const networkConnectionRelations = relations(networkConnections, ({ one }) => ({
+  user1: one(users, { fields: [networkConnections.userId1], references: [users.id] }),
+  user2: one(users, { fields: [networkConnections.userId2], references: [users.id] }),
 }));
 
 export const jobOfferRelations = relations(jobOffers, ({ one }) => ({
@@ -59,14 +94,20 @@ export const commentRelations = relations(comments, ({ one, many }) => ({
   }),
 }));
 
+// Schemas for insert and select operations
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export const insertResumeSchema = createInsertSchema(resumes);
 export const insertJobOfferSchema = createInsertSchema(jobOffers);
 export const insertCommentSchema = createInsertSchema(comments);
+export const insertNetworkInvitationSchema = createInsertSchema(networkInvitations);
+export const insertNetworkConnectionSchema = createInsertSchema(networkConnections);
 
+// Type definitions
 export type InsertUser = typeof users.$inferInsert;
 export type SelectUser = typeof users.$inferSelect;
 export type Resume = typeof resumes.$inferSelect;
 export type JobOffer = typeof jobOffers.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
+export type NetworkInvitation = typeof networkInvitations.$inferSelect;
+export type NetworkConnection = typeof networkConnections.$inferSelect;

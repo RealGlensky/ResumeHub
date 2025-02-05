@@ -2,8 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { resumes, jobOffers, comments } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { resumes, jobOffers, comments, networkInvitations, networkConnections, users } from "@db/schema";
+import { eq, and, or } from "drizzle-orm";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
@@ -96,8 +96,30 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
+
+    // Check if user has access to the resume
     if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
-      return res.sendStatus(403);
+      // If not public, check if users are connected
+      if (!req.user) return res.sendStatus(403);
+
+      const [connection] = await db
+        .select()
+        .from(networkConnections)
+        .where(
+          or(
+            and(
+              eq(networkConnections.userId1, req.user.id),
+              eq(networkConnections.userId2, resume.userId)
+            ),
+            and(
+              eq(networkConnections.userId1, resume.userId),
+              eq(networkConnections.userId2, req.user.id)
+            )
+          )
+        )
+        .limit(1);
+
+      if (!connection) return res.sendStatus(403);
     }
 
     res.json(resume);
@@ -224,6 +246,141 @@ export function registerRoutes(app: Express): Server {
 
     res.json(rootComments);
   });
+
+  // Network routes
+  app.post("/api/network/invite", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const { receiverId } = req.body;
+    if (!receiverId) return res.status(400).json({ error: 'Receiver ID is required' });
+
+    // Check if invitation already exists
+    const [existingInvitation] = await db
+      .select()
+      .from(networkInvitations)
+      .where(
+        and(
+          eq(networkInvitations.senderId, req.user.id),
+          eq(networkInvitations.receiverId, receiverId),
+          eq(networkInvitations.status, 'pending')
+        )
+      )
+      .limit(1);
+
+    if (existingInvitation) {
+      return res.status(400).json({ error: 'Invitation already sent' });
+    }
+
+    const [invitation] = await db
+      .insert(networkInvitations)
+      .values({
+        senderId: req.user.id,
+        receiverId: receiverId,
+      })
+      .returning();
+
+    res.json(invitation);
+  });
+
+  app.get("/api/network/invitations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    // Get both sent and received invitations
+    const invitations = await db
+      .select({
+        id: networkInvitations.id,
+        status: networkInvitations.status,
+        createdAt: networkInvitations.createdAt,
+        sender: {
+          id: users.id,
+          username: users.username,
+        },
+        receiver: {
+          id: users.id,
+          username: users.username,
+        },
+      })
+      .from(networkInvitations)
+      .where(
+        or(
+          eq(networkInvitations.senderId, req.user.id),
+          eq(networkInvitations.receiverId, req.user.id)
+        )
+      )
+      .orderBy(networkInvitations.createdAt);
+
+    res.json(invitations);
+  });
+
+  app.post("/api/network/invitations/:id/:action", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const { id, action } = req.params;
+    if (!['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Invalid action' });
+    }
+
+    // Get the invitation and check if user is the receiver
+    const [invitation] = await db
+      .select()
+      .from(networkInvitations)
+      .where(
+        and(
+          eq(networkInvitations.id, parseInt(id)),
+          eq(networkInvitations.receiverId, req.user.id),
+          eq(networkInvitations.status, 'pending')
+        )
+      )
+      .limit(1);
+
+    if (!invitation) {
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    if (action === 'accept') {
+      // Create network connection
+      await db
+        .insert(networkConnections)
+        .values({
+          userId1: invitation.senderId,
+          userId2: invitation.receiverId,
+        });
+    }
+
+    // Update invitation status
+    const [updatedInvitation] = await db
+      .update(networkInvitations)
+      .set({ status: action === 'accept' ? 'accepted' : 'rejected' })
+      .where(eq(networkInvitations.id, invitation.id))
+      .returning();
+
+    res.json(updatedInvitation);
+  });
+
+  app.get("/api/network/connections", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    // Get all connections where the user is either userId1 or userId2
+    const connections = await db
+      .select({
+        id: networkConnections.id,
+        createdAt: networkConnections.createdAt,
+        user: {
+          id: users.id,
+          username: users.username,
+        }
+      })
+      .from(networkConnections)
+      .where(
+        or(
+          eq(networkConnections.userId1, req.user.id),
+          eq(networkConnections.userId2, req.user.id)
+        )
+      );
+
+    res.json(connections);
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;
