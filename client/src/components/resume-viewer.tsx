@@ -6,8 +6,9 @@ import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+// Configure worker with absolute path
+const workerUrl = new URL('/pdf.worker.min.js', window.location.origin).href;
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -38,15 +39,13 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setIsLoading(true);
         setLoadError(null);
 
-        // Create a new loading task
-        const loadingTask = pdfjsLib.getDocument({
+        // Load the PDF document
+        const pdf = await pdfjsLib.getDocument({
           url: fileUrl,
-          disableWorker: false,
-          enableXfa: true,
+          cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/cmaps/',
           cMapPacked: true,
-        });
+        }).promise;
 
-        const pdf = await loadingTask.promise;
         setNumPages(pdf.numPages);
 
         // Pre-render all pages
@@ -55,15 +54,25 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
           const canvas = canvasRefs.current[pageNum - 1];
 
           if (canvas) {
-            const viewport = page.getViewport({ scale: 1.5 });
+            // Get the viewport at scale 1
+            const viewport = page.getViewport({ scale: 1.0 });
+
+            // Calculate scale to fit within a reasonable width
+            const maxWidth = 800;
+            const scale = maxWidth / viewport.width;
+            const scaledViewport = page.getViewport({ scale });
+
+            // Set canvas dimensions
+            canvas.width = scaledViewport.width;
+            canvas.height = scaledViewport.height;
+
             const context = canvas.getContext('2d');
+            if (!context) continue;
 
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
+            // Render page
             await page.render({
-              canvasContext: context!,
-              viewport: viewport
+              canvasContext: context,
+              viewport: scaledViewport,
             }).promise;
           }
         }
@@ -123,15 +132,15 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
               <>
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <Skeleton className="w-full h-full" />
+                    <Skeleton className="w-full h-[800px]" />
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {Array.from({ length: numPages }, (_, i) => (
-                      <div key={i} className="flex justify-center">
+                      <div key={i} className="flex justify-center bg-white rounded-lg shadow-lg p-4">
                         <canvas
                           ref={el => canvasRefs.current[i] = el}
-                          className="shadow-lg"
+                          className="max-w-full"
                         />
                       </div>
                     ))}
