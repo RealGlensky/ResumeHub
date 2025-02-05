@@ -44,7 +44,10 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setLoadError(null);
 
         console.log('Loading PDF from URL:', fileUrl);
-        const loadingTask = pdfjsLib.getDocument(fileUrl);
+        const loadingTask = pdfjsLib.getDocument({
+          url: fileUrl,
+          worker: new Worker(workerSrc)
+        });
 
         loadingTask.onProgress = (progress) => {
           console.log('Loading progress:', progress.loaded, '/', progress.total);
