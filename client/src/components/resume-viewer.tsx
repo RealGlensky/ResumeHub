@@ -6,9 +6,8 @@ import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure worker with absolute path
-const workerUrl = new URL('/pdf.worker.min.js', window.location.origin).href;
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+// Configure worker using webpack worker-loader
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -39,7 +38,6 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setIsLoading(true);
         setLoadError(null);
 
-        // Load the PDF document
         const pdf = await pdfjsLib.getDocument({
           url: fileUrl,
           cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/cmaps/',
@@ -48,39 +46,38 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
 
         setNumPages(pdf.numPages);
 
-        // Pre-render all pages
+        // Render pages
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
           const page = await pdf.getPage(pageNum);
           const canvas = canvasRefs.current[pageNum - 1];
 
           if (canvas) {
-            // Get the viewport at scale 1
-            const viewport = page.getViewport({ scale: 1.0 });
+            const originalViewport = page.getViewport({ scale: 1.0 });
+            const scale = Math.min(800 / originalViewport.width, 1.5);
+            const viewport = page.getViewport({ scale });
 
-            // Calculate scale to fit within a reasonable width
-            const maxWidth = 800;
-            const scale = maxWidth / viewport.width;
-            const scaledViewport = page.getViewport({ scale });
-
-            // Set canvas dimensions
-            canvas.width = scaledViewport.width;
-            canvas.height = scaledViewport.height;
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
 
             const context = canvas.getContext('2d');
             if (!context) continue;
 
-            // Render page
-            await page.render({
-              canvasContext: context,
-              viewport: scaledViewport,
-            }).promise;
+            try {
+              await page.render({
+                canvasContext: context,
+                viewport,
+              }).promise;
+            } catch (renderError) {
+              console.error('Error rendering page:', renderError);
+              setLoadError('Error rendering PDF page');
+            }
           }
         }
 
         setIsLoading(false);
       } catch (error) {
         console.error('Error loading PDF:', error);
-        setLoadError(error instanceof Error ? error.message : 'Failed to load PDF');
+        setLoadError('Failed to load PDF. Please try downloading it directly.');
         setIsLoading(false);
       }
     };
@@ -88,7 +85,6 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
     loadPDF();
   }, [isOpen, fileUrl]);
 
-  // Update canvas refs array when numPages changes
   useEffect(() => {
     canvasRefs.current = Array(numPages).fill(null);
   }, [numPages]);
@@ -126,7 +122,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
             {loadError ? (
               <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
                 <AlertCircle className="h-5 w-5" />
-                {loadError}. Please try downloading it directly.
+                {loadError}
               </div>
             ) : (
               <>
