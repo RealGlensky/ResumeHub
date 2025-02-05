@@ -292,13 +292,25 @@ export function registerRoutes(app: Express): Server {
         status: networkInvitations.status,
         createdAt: networkInvitations.createdAt,
         senderId: networkInvitations.senderId,
+        receiverId: networkInvitations.receiverId,
         sender: {
           id: users.id,
           username: users.username,
         },
+        receiver: {
+          id: users.id,
+          username: users.username,
+        }
       })
       .from(networkInvitations)
-      .leftJoin(users, eq(networkInvitations.senderId, users.id))
+      .leftJoin(
+        users.as('sender'),
+        eq(networkInvitations.senderId, users.as('sender').id)
+      )
+      .leftJoin(
+        users.as('receiver'),
+        eq(networkInvitations.receiverId, users.as('receiver').id)
+      )
       .where(
         or(
           eq(networkInvitations.senderId, req.user.id),

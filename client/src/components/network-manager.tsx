@@ -16,6 +16,10 @@ type NetworkInvitation = {
     id: number;
     username: string;
   };
+  receiver: {
+    id: number;
+    username: string;
+  };
 };
 
 type NetworkConnection = {
@@ -78,7 +82,7 @@ export function NetworkManager() {
 
   return (
     <div className="space-y-6">
-      {/* Search and Invite Section remains the same */}
+      {/* Search and Invite Section */}
       <Card>
         <CardHeader>
           <CardTitle>Find Users</CardTitle>
@@ -193,7 +197,7 @@ export function NetworkManager() {
                 >
                   <div>
                     <p className="font-medium">
-                      Invitation sent to {invitation.sender.username}
+                      Invitation sent to {invitation.receiver.username}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Pending response
