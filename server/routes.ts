@@ -285,41 +285,41 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/network/invitations", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const senderTable = users.as('sender');
-    const receiverTable = users.as('receiver');
-
     // Get both sent and received invitations with proper joins
-    const invitations = await db
-      .select({
-        id: networkInvitations.id,
-        status: networkInvitations.status,
-        createdAt: networkInvitations.createdAt,
-        senderId: networkInvitations.senderId,
-        receiverId: networkInvitations.receiverId,
-        sender: {
-          id: senderTable.id,
-          username: senderTable.username,
-        },
-        receiver: {
-          id: receiverTable.id,
-          username: receiverTable.username,
-        }
-      })
-      .from(networkInvitations)
-      .leftJoin(senderTable, eq(networkInvitations.senderId, senderTable.id))
-      .leftJoin(receiverTable, eq(networkInvitations.receiverId, receiverTable.id))
-      .where(
-        or(
-          eq(networkInvitations.senderId, req.user.id),
-          eq(networkInvitations.receiverId, req.user.id)
-        )
-      )
-      .orderBy(networkInvitations.createdAt);
+    const invitations = await db.execute(`
+      SELECT 
+        ni.id,
+        ni.status,
+        ni.created_at as "createdAt",
+        ni.sender_id as "senderId",
+        ni.receiver_id as "receiverId",
+        s.id as "sender.id",
+        s.username as "sender.username",
+        r.id as "receiver.id",
+        r.username as "receiver.username"
+      FROM network_invitations ni
+      LEFT JOIN users s ON ni.sender_id = s.id
+      LEFT JOIN users r ON ni.receiver_id = r.id
+      WHERE ni.sender_id = $1 OR ni.receiver_id = $1
+      ORDER BY ni.created_at DESC
+    `, [req.user.id]);
 
-    // Transform the data to include whether the current user sent or received the invitation
-    const transformedInvitations = invitations.map(invitation => ({
-      ...invitation,
-      type: invitation.senderId === req.user.id ? 'sent' : 'received'
+    // Transform the flat results into nested objects
+    const transformedInvitations = invitations.map((row: any) => ({
+      id: row.id,
+      status: row.status,
+      createdAt: row.createdAt,
+      senderId: row.senderId,
+      receiverId: row.receiverId,
+      sender: {
+        id: row["sender.id"],
+        username: row["sender.username"],
+      },
+      receiver: {
+        id: row["receiver.id"],
+        username: row["receiver.username"],
+      },
+      type: row.senderId === req.user.id ? 'sent' : 'received'
     }));
 
     res.json(transformedInvitations);
