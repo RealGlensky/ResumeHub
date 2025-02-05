@@ -141,13 +141,14 @@ export function registerRoutes(app: Express): Server {
   // Comment routes
   app.post("/api/resumes/:id/comments", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const { content } = req.body;
+    const { content, parentId } = req.body;
     const [comment] = await db
       .insert(comments)
       .values({
         resumeId: req.params.id,
         userId: req.user.id,
         content,
+        parentId: parentId || null,
       })
       .returning();
     res.json(comment);
@@ -165,11 +166,38 @@ export function registerRoutes(app: Express): Server {
       return res.sendStatus(403);
     }
 
-    const resumeComments = await db
-      .select()
+    // Fetch comments with their replies
+    const allComments = await db
+      .select({
+        id: comments.id,
+        content: comments.content,
+        userId: comments.userId,
+        parentId: comments.parentId,
+        createdAt: comments.createdAt,
+      })
       .from(comments)
-      .where(eq(comments.resumeId, req.params.id));
-    res.json(resumeComments);
+      .where(eq(comments.resumeId, req.params.id))
+      .orderBy(comments.createdAt);
+
+    // Organize comments into threads
+    const threadedComments = allComments.reduce((acc, comment) => {
+      if (!comment.parentId) {
+        // This is a root comment
+        acc[comment.id] = {
+          ...comment,
+          replies: [],
+        };
+      } else if (acc[comment.parentId]) {
+        // This is a reply
+        acc[comment.parentId].replies.push(comment);
+      }
+      return acc;
+    }, {});
+
+    // Convert to array and only return root comments with their replies
+    const rootComments = Object.values(threadedComments);
+
+    res.json(rootComments);
   });
 
   const httpServer = createServer(app);

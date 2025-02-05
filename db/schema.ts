@@ -24,7 +24,7 @@ export const jobOffers = pgTable("job_offers", {
   resumeId: uuid("resume_id").notNull().references(() => resumes.id),
   company: text("company").notNull(),
   position: text("position").notNull(),
-  status: text("status").notNull(), // offered, accepted, declined
+  status: text("status").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -32,6 +32,7 @@ export const comments = pgTable("comments", {
   id: serial("id").primaryKey(),
   resumeId: uuid("resume_id").notNull().references(() => resumes.id),
   userId: integer("user_id").notNull().references(() => users.id),
+  parentId: integer("parent_id").references(() => comments.id),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -46,9 +47,16 @@ export const jobOfferRelations = relations(jobOffers, ({ one }) => ({
   resume: one(resumes, { fields: [jobOffers.resumeId], references: [resumes.id] }),
 }));
 
-export const commentRelations = relations(comments, ({ one }) => ({
+export const commentRelations = relations(comments, ({ one, many }) => ({
   user: one(users, { fields: [comments.userId], references: [users.id] }),
   resume: one(resumes, { fields: [comments.resumeId], references: [resumes.id] }),
+  parent: one(comments, {
+    fields: [comments.parentId],
+    references: [comments.id],
+  }),
+  replies: many(comments, {
+    relationName: "comment_replies",
+  }),
 }));
 
 export const insertUserSchema = createInsertSchema(users);
