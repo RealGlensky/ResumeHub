@@ -1,19 +1,34 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { JobOfferForm } from "./job-offer-form";
 import { CommentSection } from "./comment-section";
 import { ResumeViewer } from "./resume-viewer";
-import { Share2, FileText, Briefcase } from "lucide-react";
+import { Share2, FileText, Briefcase, UserPlus } from "lucide-react";
 import type { Resume } from "@db/schema";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 
-export function ResumeCard({ resume }: { resume: Resume }) {
+
+export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: number; username: string } }) {
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
   const { data: jobOffers = [] } = useQuery<JobOffer[]>({
     queryKey: [`/api/resumes/${resume.id}/offers`],
+  });
+
+  const sendInvitation = useMutation({
+    mutationFn: async (receiverId: number) => {
+      return apiRequest("/api/network/invite", {
+        method: "POST",
+        body: { receiverId },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
+    },
   });
 
   return (
@@ -21,9 +36,27 @@ export function ResumeCard({ resume }: { resume: Resume }) {
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="text-xl font-semibold">{resume.title}</CardTitle>
-          <Button variant="ghost" size="icon">
-            <Share2 className="h-4 w-4" />
-          </Button>
+          {user && user.id !== resume.userId && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogTitle>Connect with {user.username}</DialogTitle>
+                <DialogDescription>
+                  Send a connection request to view and share resumes
+                </DialogDescription>
+                <Button
+                  onClick={() => sendInvitation.mutate(user.id)}
+                  disabled={sendInvitation.isPending}
+                >
+                  Send Connection Request
+                </Button>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </CardHeader>
       <CardContent>
