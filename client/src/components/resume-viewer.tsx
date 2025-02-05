@@ -45,7 +45,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
                 </div>
               ) : (
                 <iframe
-                  src={`https://mozilla.github.io/pdf.js/legacy/web/viewer.html?file=${encodeURIComponent(pdfUrl)}`}
+                  src={pdfUrl}
                   className="w-full h-full border-0"
                   title={`PDF viewer for ${resume.title}`}
                   sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
