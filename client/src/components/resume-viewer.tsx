@@ -22,7 +22,7 @@ interface ResumeViewerProps {
 export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState(0);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
 
@@ -41,10 +41,17 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
     const loadPDF = async () => {
       try {
         setIsLoading(true);
-        setLoadError(false);
+        setLoadError(null);
 
+        console.log('Loading PDF from URL:', fileUrl);
         const loadingTask = pdfjsLib.getDocument(fileUrl);
+
+        loadingTask.onProgress = (progress) => {
+          console.log('Loading progress:', progress.loaded, '/', progress.total);
+        };
+
         const pdf = await loadingTask.promise;
+        console.log('PDF loaded successfully, pages:', pdf.numPages);
         setNumPages(pdf.numPages);
 
         // Pre-render all pages
@@ -69,7 +76,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setIsLoading(false);
       } catch (error) {
         console.error('Error loading PDF:', error);
-        setLoadError(true);
+        setLoadError(error instanceof Error ? error.message : 'Failed to load PDF');
         setIsLoading(false);
       }
     };
@@ -91,7 +98,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         onClick={() => {
           setIsOpen(true);
           setIsLoading(true);
-          setLoadError(false);
+          setLoadError(null);
         }}
       >
         <FileText className="h-4 w-4" />
@@ -115,7 +122,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
             {loadError ? (
               <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
                 <AlertCircle className="h-5 w-5" />
-                Failed to load PDF. Please try downloading it directly.
+                {loadError}. Please try downloading it directly.
               </div>
             ) : (
               <>
