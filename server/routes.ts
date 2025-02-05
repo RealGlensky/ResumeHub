@@ -285,44 +285,49 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/network/invitations", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    // Get both sent and received invitations with proper joins
-    const invitations = await db.execute(`
-      SELECT 
-        ni.id,
-        ni.status,
-        ni.created_at as "createdAt",
-        ni.sender_id as "senderId",
-        ni.receiver_id as "receiverId",
-        s.id as "sender.id",
-        s.username as "sender.username",
-        r.id as "receiver.id",
-        r.username as "receiver.username"
-      FROM network_invitations ni
-      LEFT JOIN users s ON ni.sender_id = s.id
-      LEFT JOIN users r ON ni.receiver_id = r.id
-      WHERE ni.sender_id = $1 OR ni.receiver_id = $1
-      ORDER BY ni.created_at DESC
-    `, [req.user.id]);
+    try {
+      // Get both sent and received invitations with proper joins
+      const result = await db.execute(
+        `SELECT 
+          ni.id,
+          ni.status,
+          ni.created_at as "createdAt",
+          ni.sender_id as "senderId",
+          ni.receiver_id as "receiverId",
+          sender.id as "sender.id",
+          sender.username as "sender.username",
+          receiver.id as "receiver.id",
+          receiver.username as "receiver.username"
+        FROM network_invitations ni
+        LEFT JOIN users sender ON ni.sender_id = sender.id
+        LEFT JOIN users receiver ON ni.receiver_id = receiver.id
+        WHERE ni.sender_id = ${req.user.id} OR ni.receiver_id = ${req.user.id}
+        ORDER BY ni.created_at DESC`
+      );
 
-    // Transform the flat results into nested objects
-    const transformedInvitations = invitations.map((row: any) => ({
-      id: row.id,
-      status: row.status,
-      createdAt: row.createdAt,
-      senderId: row.senderId,
-      receiverId: row.receiverId,
-      sender: {
-        id: row["sender.id"],
-        username: row["sender.username"],
-      },
-      receiver: {
-        id: row["receiver.id"],
-        username: row["receiver.username"],
-      },
-      type: row.senderId === req.user.id ? 'sent' : 'received'
-    }));
+      // Transform the flat results into nested objects
+      const transformedInvitations = result.rows.map((row: any) => ({
+        id: row.id,
+        status: row.status,
+        createdAt: row.createdAt,
+        senderId: row.senderId,
+        receiverId: row.receiverId,
+        sender: {
+          id: row["sender.id"],
+          username: row["sender.username"],
+        },
+        receiver: {
+          id: row["receiver.id"],
+          username: row["receiver.username"],
+        },
+        type: row.senderId === req.user.id ? 'sent' : 'received'
+      }));
 
-    res.json(transformedInvitations);
+      res.json(transformedInvitations);
+    } catch (error) {
+      console.error('Error fetching network invitations:', error);
+      res.status(500).json({ error: 'Failed to fetch network invitations' });
+    }
   });
 
   app.post("/api/network/invitations/:id/:action", async (req, res) => {
