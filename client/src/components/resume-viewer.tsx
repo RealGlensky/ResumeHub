@@ -6,8 +6,13 @@ import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configure worker
+const workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
+).toString();
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -38,7 +43,8 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setIsLoading(true);
         setLoadError(false);
 
-        const pdf = await pdfjsLib.getDocument(fileUrl).promise;
+        const loadingTask = pdfjsLib.getDocument(fileUrl);
+        const pdf = await loadingTask.promise;
         setNumPages(pdf.numPages);
 
         // Pre-render all pages
