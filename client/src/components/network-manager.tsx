@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { Check, X, Search, UserPlus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 type NetworkInvitation = {
   id: number;
@@ -38,6 +39,7 @@ type User = {
 
 export function NetworkManager() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
 
   const { data: searchResults = [] } = useQuery<User[]>({
     queryKey: ["/api/users/search", searchQuery],
@@ -60,9 +62,23 @@ export function NetworkManager() {
     mutationFn: async ({ id, action }: { id: number; action: "accept" | "reject" }) => {
       return apiRequest("POST", `/api/network/invitations/${id}/${action}`);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Show success message
+      toast({
+        title: `Invitation ${variables.action}ed`,
+        description: `You have successfully ${variables.action}ed the connection request.`,
+      });
+
+      // Invalidate both invitations and connections queries to refresh the lists
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/connections"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to process the invitation. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -71,8 +87,19 @@ export function NetworkManager() {
       return apiRequest("POST", "/api/network/invite", { receiverId });
     },
     onSuccess: () => {
+      toast({
+        title: "Invitation Sent",
+        description: "Your connection request has been sent successfully.",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
       setSearchQuery("");
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to send invitation. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -151,12 +178,14 @@ export function NetworkManager() {
                     <Button
                       size="sm"
                       variant="outline"
+                      className="bg-green-50 hover:bg-green-100 text-green-600 hover:text-green-700"
                       onClick={() =>
                         handleInvitation.mutate({
                           id: invitation.id,
                           action: "accept",
                         })
                       }
+                      disabled={handleInvitation.isPending}
                     >
                       <Check className="w-4 h-4 mr-1" />
                       Accept
@@ -164,12 +193,14 @@ export function NetworkManager() {
                     <Button
                       size="sm"
                       variant="outline"
+                      className="bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700"
                       onClick={() =>
                         handleInvitation.mutate({
                           id: invitation.id,
                           action: "reject",
                         })
                       }
+                      disabled={handleInvitation.isPending}
                     >
                       <X className="w-4 h-4 mr-1" />
                       Reject
