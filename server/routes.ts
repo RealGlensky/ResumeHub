@@ -7,9 +7,9 @@ import { eq } from "drizzle-orm";
 import bodyParser from "body-parser";
 
 export function registerRoutes(app: Express): Server {
-  // Configure body-parser to handle larger payloads
-  app.use(bodyParser.json({ limit: '10mb' }));
-  app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
+  // Configure body-parser to handle larger payloads (50MB)
+  app.use(bodyParser.json({ limit: '50mb' }));
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
   setupAuth(app);
 
