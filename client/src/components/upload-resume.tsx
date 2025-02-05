@@ -23,12 +23,22 @@ export function UploadResume() {
 
   const uploadMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      // For demo purposes, we'll use a publicly accessible PDF
-      const demoFileUrl = "https://raw.githubusercontent.com/mozilla/pdf.js/master/web/compressed.tracemonkey-pldi-09.pdf";
+      const file = data.file[0];
+      if (!file) {
+        throw new Error('Please select a PDF file');
+      }
+
+      // Convert the file to a data URL
+      const fileUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
 
       const res = await apiRequest("POST", "/api/resumes", {
         title: data.title,
-        fileUrl: demoFileUrl,
+        fileUrl,
         isPublic: data.isPublic,
       });
       return res.json();
