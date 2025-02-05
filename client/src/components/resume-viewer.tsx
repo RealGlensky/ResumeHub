@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Maximize2, AlertCircle, FileText } from "lucide-react";
+import { FileText, AlertCircle, Download } from "lucide-react";
 import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -15,13 +15,20 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  // Check if the URL is a data URL or an external URL
-  const viewerUrl = resume.fileUrl.startsWith('data:')
-    ? resume.fileUrl
-    : `https://mozilla.github.io/pdf.js/legacy/web/viewer.html?file=${encodeURIComponent(resume.fileUrl)}`;
+  // Get the absolute URL for the resume file
+  const fileUrl = resume.fileUrl.startsWith('http') 
+    ? resume.fileUrl 
+    : `${window.location.origin}${resume.fileUrl}`;
+
+  // For PDF.js viewer
+  const viewerUrl = `https://mozilla.github.io/pdf.js/legacy/web/viewer.html?file=${encodeURIComponent(fileUrl)}`;
 
   const handleIframeLoad = () => {
     setIsLoading(false);
+  };
+
+  const handleDownload = () => {
+    window.open(fileUrl, '_blank');
   };
 
   return (
@@ -42,42 +49,44 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-4xl w-full h-[90vh]">
-          <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                {resume.title}
-              </h2>
-            </div>
+          <DialogTitle className="flex justify-between items-center">
+            <span className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {resume.title}
+            </span>
+            <Button variant="outline" size="sm" onClick={handleDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </DialogTitle>
 
-            <div className="flex-1 overflow-hidden bg-muted rounded-lg relative">
-              {loadError ? (
-                <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
-                  <AlertCircle className="h-5 w-5" />
-                  Failed to load PDF. Please try downloading it directly.
-                </div>
-              ) : (
-                <>
-                  {isLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                      <Skeleton className="w-full h-full" />
-                    </div>
-                  )}
-                  <iframe
-                    src={viewerUrl}
-                    className="w-full h-full border-0"
-                    title={`PDF viewer for ${resume.title}`}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
-                    onError={() => {
-                      setLoadError(true);
-                      setIsLoading(false);
-                    }}
-                    onLoad={handleIframeLoad}
-                    loading="lazy"
-                  />
-                </>
-              )}
-            </div>
+          <div className="flex-1 overflow-hidden bg-muted rounded-lg relative mt-4">
+            {loadError ? (
+              <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Failed to load PDF. Please try downloading it directly.
+              </div>
+            ) : (
+              <>
+                {isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                    <Skeleton className="w-full h-full" />
+                  </div>
+                )}
+                <iframe
+                  src={viewerUrl}
+                  className="w-full h-full border-0"
+                  title={`PDF viewer for ${resume.title}`}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
+                  onError={() => {
+                    setLoadError(true);
+                    setIsLoading(false);
+                  }}
+                  onLoad={handleIframeLoad}
+                  loading="lazy"
+                />
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
