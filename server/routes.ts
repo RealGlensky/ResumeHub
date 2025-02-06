@@ -125,6 +125,34 @@ export function registerRoutes(app: Express): Server {
     res.json(resume);
   });
 
+  // Add new route for toggling resume mode
+  app.patch("/api/resumes/:id/mode", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const { mode } = req.body;
+    if (!['share', 'collaborate'].includes(mode)) {
+      return res.status(400).json({ error: 'Invalid mode' });
+    }
+
+    // Verify ownership
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.id))
+      .limit(1);
+
+    if (!resume) return res.sendStatus(404);
+    if (resume.userId !== req.user.id) return res.sendStatus(403);
+
+    const [updatedResume] = await db
+      .update(resumes)
+      .set({ mode })
+      .where(eq(resumes.id, req.params.id))
+      .returning();
+
+    res.json(updatedResume);
+  });
+
   // Job offer routes
   app.post("/api/resumes/:id/offers", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -163,6 +191,21 @@ export function registerRoutes(app: Express): Server {
   // Comment routes
   app.post("/api/resumes/:id/comments", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    // Check if user has access to comment
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.id))
+      .limit(1);
+
+    if (!resume) return res.sendStatus(404);
+
+    // Only allow comments if user is owner or resume is in collaborate mode
+    if (resume.userId !== req.user.id && resume.mode !== 'collaborate') {
+      return res.sendStatus(403);
+    }
+
     const { content, parentId } = req.body;
     const [comment] = await db
       .insert(comments)
@@ -173,6 +216,7 @@ export function registerRoutes(app: Express): Server {
         parentId: parentId || null,
       })
       .returning();
+
     res.json(comment);
   });
 

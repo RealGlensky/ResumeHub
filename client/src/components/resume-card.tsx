@@ -2,16 +2,16 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { JobOfferForm } from "./job-offer-form";
 import { CommentSection } from "./comment-section";
 import { ResumeViewer } from "./resume-viewer";
-import { Share2, FileText, Briefcase, UserPlus } from "lucide-react";
+import { Share2, FileText, Briefcase, UserPlus, MessageSquare } from "lucide-react";
 import type { Resume } from "@db/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
-
 
 export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: number; username: string } }) {
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
@@ -28,11 +28,38 @@ export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: numb
     },
   });
 
+  const toggleMode = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/resumes/${resume.id}/mode`, {
+        mode: resume.mode === 'share' ? 'collaborate' : 'share'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+    },
+  });
+
+  const isOwner = user?.id === resume.userId;
+
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
-          <CardTitle className="text-xl font-semibold">{resume.title}</CardTitle>
+          <div className="space-y-2">
+            <CardTitle className="text-xl font-semibold">{resume.title}</CardTitle>
+            {isOwner && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {resume.mode === 'share' ? 'Share Mode' : 'Collaborate Mode'}
+                </span>
+                <Switch
+                  checked={resume.mode === 'collaborate'}
+                  onCheckedChange={() => toggleMode.mutate()}
+                  disabled={toggleMode.isPending}
+                />
+              </div>
+            )}
+          </div>
           {user && user.id !== resume.userId && (
             <Dialog>
               <DialogTrigger asChild>
@@ -60,7 +87,7 @@ export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: numb
         <div className="space-y-4">
           <ResumeViewer
             resume={resume}
-            mode={activeTab === "comments" ? "create" : "share"}
+            mode={resume.mode}
           />
 
           <div className="flex items-center gap-4">
@@ -73,29 +100,33 @@ export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: numb
               <Briefcase className="h-4 w-4 mr-2" />
               Job Offers ({jobOffers.length})
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={activeTab === "comments" ? "bg-secondary" : ""}
-              onClick={() => setActiveTab("comments")}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Comments
-            </Button>
+            {(isOwner || resume.mode === 'collaborate') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className={activeTab === "comments" ? "bg-secondary" : ""}
+                onClick={() => setActiveTab("comments")}
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Comments
+              </Button>
+            )}
           </div>
 
           {activeTab === "offers" ? (
             <div className="space-y-4">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Add Job Offer
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <JobOfferForm resumeId={resume.id} />
-                </DialogContent>
-              </Dialog>
+              {isOwner && (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full">
+                      Add Job Offer
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <JobOfferForm resumeId={resume.id} />
+                  </DialogContent>
+                </Dialog>
+              )}
 
               <div className="space-y-2">
                 {jobOffers.map((offer) => (
@@ -115,7 +146,9 @@ export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: numb
               </div>
             </div>
           ) : (
-            <CommentSection resumeId={resume.id} />
+            (isOwner || resume.mode === 'collaborate') && (
+              <CommentSection resumeId={resume.id} />
+            )
           )}
         </div>
       </CardContent>
