@@ -10,22 +10,12 @@ import { Share2, FileText, Briefcase, UserPlus, MessageSquare } from "lucide-rea
 import type { Resume } from "@db/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: number; username: string } }) {
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
   const { data: jobOffers = [] } = useQuery<JobOffer[]>({
     queryKey: [`/api/resumes/${resume.id}/offers`],
-  });
-
-  const sendInvitation = useMutation({
-    mutationFn: async (receiverId: number) => {
-      return apiRequest("POST", "/api/network/invite", { receiverId });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
-    },
   });
 
   const toggleMode = useMutation({
@@ -39,26 +29,24 @@ export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: numb
     },
   });
 
+  const sendInvitation = useMutation({
+    mutationFn: async (receiverId: number) => {
+      return apiRequest("POST", "/api/network/invite", { receiverId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
+    },
+  });
+
   const isOwner = user?.id === resume.userId;
+  console.log('Debug - User:', user?.id, 'Resume Owner:', resume.userId, 'Is Owner:', isOwner);
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="space-y-4">
         <div className="flex justify-between items-start">
           <div className="space-y-2">
             <CardTitle className="text-xl font-semibold">{resume.title}</CardTitle>
-            {isOwner && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {resume.mode === 'share' ? 'Share Mode' : 'Collaborate Mode'}
-                </span>
-                <Switch
-                  checked={resume.mode === 'collaborate'}
-                  onCheckedChange={() => toggleMode.mutate()}
-                  disabled={toggleMode.isPending}
-                />
-              </div>
-            )}
           </div>
           {user && user.id !== resume.userId && (
             <Dialog>
@@ -82,7 +70,24 @@ export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: numb
             </Dialog>
           )}
         </div>
+
+        {isOwner && (
+          <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
+            <div className="space-y-1">
+              <h4 className="font-medium">Resume Mode</h4>
+              <p className="text-sm text-muted-foreground">
+                {resume.mode === 'share' ? 'Share Mode - Others can only view' : 'Collaborate Mode - Others can comment'}
+              </p>
+            </div>
+            <Switch
+              checked={resume.mode === 'collaborate'}
+              onCheckedChange={() => toggleMode.mutate()}
+              disabled={toggleMode.isPending}
+            />
+          </div>
+        )}
       </CardHeader>
+
       <CardContent>
         <div className="space-y-4">
           <ResumeViewer
