@@ -47,7 +47,11 @@ export default function HomePage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {resumes.map((resume) => (
-            <ResumeCard key={resume.id} resume={resume} />
+            <ResumeCard 
+              key={resume.id} 
+              resume={resume} 
+              user={user || undefined}
+            />
           ))}
         </div>
 
