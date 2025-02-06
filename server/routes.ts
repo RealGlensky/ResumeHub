@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { resumes, jobOffers, comments, networkInvitations, networkConnections, users } from "@db/schema";
-import { eq, and, or, desc } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
@@ -84,8 +84,7 @@ export function registerRoutes(app: Express): Server {
     const userResumes = await db
       .select()
       .from(resumes)
-      .where(eq(resumes.userId, req.user.id))
-      .orderBy(desc(resumes.createdAt));
+      .where(eq(resumes.userId, req.user.id));
     res.json(userResumes);
   });
 
@@ -147,10 +146,7 @@ export function registerRoutes(app: Express): Server {
 
     const [updatedResume] = await db
       .update(resumes)
-      .set({ 
-        mode,
-        updatedAt: resume.updatedAt 
-      })
+      .set({ mode })
       .where(eq(resumes.id, req.params.id))
       .returning();
 
