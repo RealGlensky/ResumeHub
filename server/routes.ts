@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { resumes, jobOffers, comments, networkInvitations, networkConnections, users } from "@db/schema";
-import { eq, and, or, desc } from "drizzle-orm";
+import { eq, and, or, desc, inArray } from "drizzle-orm";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
@@ -487,6 +487,76 @@ export function registerRoutes(app: Express): Server {
     res.json(searchResults.filter(user => user.id !== req.user.id));
   });
 
+
+  // Add new route for network resumes
+  app.get("/api/network/resumes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      // Get all connections where the user is either userId1 or userId2
+      const networkUsers = await db
+        .select({
+          connectedUserId: users.id,
+        })
+        .from(networkConnections)
+        .leftJoin(
+          users,
+          and(
+            or(
+              eq(networkConnections.userId1, req.user.id),
+              eq(networkConnections.userId2, req.user.id)
+            ),
+            or(
+              and(
+                eq(networkConnections.userId1, req.user.id),
+                eq(users.id, networkConnections.userId2)
+              ),
+              and(
+                eq(networkConnections.userId2, req.user.id),
+                eq(users.id, networkConnections.userId1)
+              )
+            )
+          )
+        )
+        .where(
+          or(
+            eq(networkConnections.userId1, req.user.id),
+            eq(networkConnections.userId2, req.user.id)
+          )
+        );
+
+      // Get resumes from connected users
+      const networkResumes = await db
+        .select({
+          ...resumes,
+          owner: {
+            id: users.id,
+            username: users.username,
+          },
+        })
+        .from(resumes)
+        .leftJoin(users, eq(resumes.userId, users.id))
+        .where(
+          and(
+            inArray(
+              resumes.userId,
+              networkUsers.map((user) => user.connectedUserId)
+            ),
+            or(
+              eq(resumes.isPublic, true),
+              eq(resumes.mode, 'share'),
+              eq(resumes.mode, 'collaborate')
+            )
+          )
+        )
+        .orderBy(desc(resumes.createdAt));
+
+      res.json(networkResumes);
+    } catch (error) {
+      console.error('Error fetching network resumes:', error);
+      res.status(500).json({ error: 'Failed to fetch network resumes' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

@@ -12,7 +12,15 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
-export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: number; username: string } }) {
+export function ResumeCard({ 
+  resume, 
+  user,
+  ownerName 
+}: { 
+  resume: Resume; 
+  user?: { id: number; username: string };
+  ownerName?: string;
+}) {
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
   const { data: jobOffers = [] } = useQuery<JobOffer[]>({
     queryKey: [`/api/resumes/${resume.id}/offers`],
@@ -47,6 +55,11 @@ export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: numb
         <div className="flex justify-between items-start">
           <div className="space-y-2">
             <CardTitle className="text-xl font-semibold">{resume.title}</CardTitle>
+            {ownerName && (
+              <p className="text-sm text-muted-foreground">
+                Uploaded by {ownerName}
+              </p>
+            )}
           </div>
           {user && user.id !== resume.userId && (
             <Dialog>
@@ -56,12 +69,12 @@ export function ResumeCard({ resume, user }: { resume: Resume; user?: { id: numb
                 </Button>
               </DialogTrigger>
               <DialogContent>
-                <DialogTitle>Connect with {user.username}</DialogTitle>
+                <DialogTitle>Connect with {ownerName || "user"}</DialogTitle>
                 <DialogDescription>
                   Send a connection request to view and share resumes
                 </DialogDescription>
                 <Button
-                  onClick={() => sendInvitation.mutate(user.id)}
+                  onClick={() => sendInvitation.mutate(resume.userId)}
                   disabled={sendInvitation.isPending}
                 >
                   Send Connection Request
