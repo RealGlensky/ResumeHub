@@ -18,9 +18,15 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">ResumeTrack</h1>
           <div className="flex items-center gap-4">
-            <Link href="/network/resumes">
+            <Link href="/network">
               <Button variant="ghost" className="gap-2">
                 <Users className="h-4 w-4" />
+                Network
+              </Button>
+            </Link>
+            <Link href="/network/resumes">
+              <Button variant="ghost" className="gap-2">
+                <FileText className="h-4 w-4" />
                 Network Resumes
               </Button>
             </Link>
