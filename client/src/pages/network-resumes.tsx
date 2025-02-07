@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { ResumeCard } from "@/components/resume-card";
 import { Link } from "wouter";
-import { Home } from "lucide-react";
+import { Home, Users } from "lucide-react";
 import type { Resume } from "@db/schema";
 
 interface NetworkResume extends Resume {
@@ -30,6 +30,12 @@ export default function NetworkResumesPage() {
               <Button variant="ghost" className="gap-2">
                 <Home className="h-4 w-4" />
                 Your Resumes
+              </Button>
+            </Link>
+            <Link href="/network">
+              <Button variant="ghost" className="gap-2">
+                <Users className="h-4 w-4" />
+                Network
               </Button>
             </Link>
             <span>Welcome, {user?.username}</span>
