@@ -5,7 +5,7 @@ import { ResumeCard } from "@/components/resume-card";
 import { UploadResume } from "@/components/upload-resume";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Link } from "wouter";
-import { Users } from "lucide-react";
+import { Users, FileText } from "lucide-react";
 import type { Resume } from "@db/schema";
 
 export default function HomePage() {
@@ -18,10 +18,10 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">ResumeTrack</h1>
           <div className="flex items-center gap-4">
-            <Link href="/network">
+            <Link href="/network/resumes">
               <Button variant="ghost" className="gap-2">
                 <Users className="h-4 w-4" />
-                Network
+                Network Resumes
               </Button>
             </Link>
             <span>Welcome, {user?.username}</span>
