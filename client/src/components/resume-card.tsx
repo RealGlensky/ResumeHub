@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { JobOfferForm } from "./job-offer-form";
 import { CommentSection } from "./comment-section";
 import { ResumeViewer } from "./resume-viewer";
-import { Share2, FileText, Briefcase, UserPlus, MessageSquare } from "lucide-react";
+import { Share2, FileText, Briefcase, UserPlus, MessageSquare, Trash2, EyeOff } from "lucide-react";
 import type { Resume } from "@db/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
@@ -26,14 +26,25 @@ export function ResumeCard({
     queryKey: [`/api/resumes/${resume.id}/offers`],
   });
 
-  const toggleMode = useMutation({
+  const deleteResume = useMutation({
     mutationFn: async () => {
-      return apiRequest("PATCH", `/api/resumes/${resume.id}/mode`, {
-        mode: resume.mode === 'share' ? 'collaborate' : 'share'
+      return apiRequest("DELETE", `/api/resumes/${resume.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+    },
+  });
+
+  const toggleVisibility = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/resumes/${resume.id}/visibility`, {
+        isVisible: !resume.isPublic
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
     },
   });
 
@@ -47,7 +58,6 @@ export function ResumeCard({
   });
 
   const isOwner = user?.id === resume.userId;
-  console.log('Debug - User:', user?.id, 'Resume Owner:', resume.userId, 'Is Owner:', isOwner);
 
   return (
     <Card>
@@ -61,41 +71,69 @@ export function ResumeCard({
               </p>
             )}
           </div>
-          {user && user.id !== resume.userId && (
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogTitle>Connect with {ownerName || "user"}</DialogTitle>
-                <DialogDescription>
-                  Send a connection request to view and share resumes
-                </DialogDescription>
-                <Button
-                  onClick={() => sendInvitation.mutate(resume.userId)}
-                  disabled={sendInvitation.isPending}
-                >
-                  Send Connection Request
-                </Button>
-              </DialogContent>
-            </Dialog>
-          )}
+          <div className="flex items-center gap-2">
+            {isOwner && (
+              <>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" size="icon">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogTitle>Delete Resume</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete this resume? This action cannot be undone.
+                    </DialogDescription>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <Button
+                        variant="destructive"
+                        onClick={() => deleteResume.mutate()}
+                        disabled={deleteResume.isPending}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+            {user && user.id !== resume.userId && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <UserPlus className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogTitle>Connect with {ownerName || "user"}</DialogTitle>
+                  <DialogDescription>
+                    Send a connection request to view and share resumes
+                  </DialogDescription>
+                  <Button
+                    onClick={() => sendInvitation.mutate(resume.userId)}
+                    disabled={sendInvitation.isPending}
+                  >
+                    Send Connection Request
+                  </Button>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
 
         {isOwner && (
           <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
             <div className="space-y-1">
-              <h4 className="font-medium">Resume Mode</h4>
+              <h4 className="font-medium">Resume Visibility</h4>
               <p className="text-sm text-muted-foreground">
-                {resume.mode === 'share' ? 'Share Mode - Others can only view' : 'Collaborate Mode - Others can comment'}
+                {resume.isPublic ? 'Visible to connections' : 'Hidden from connections'}
               </p>
             </div>
             <Switch
-              checked={resume.mode === 'collaborate'}
-              onCheckedChange={() => toggleMode.mutate()}
-              disabled={toggleMode.isPending}
+              checked={resume.isPublic}
+              onCheckedChange={() => toggleVisibility.mutate()}
+              disabled={toggleVisibility.isPending}
             />
           </div>
         )}

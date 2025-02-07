@@ -126,13 +126,46 @@ export function registerRoutes(app: Express): Server {
     res.json(resume);
   });
 
-  // Add new route for toggling resume mode
-  app.patch("/api/resumes/:id/mode", async (req, res) => {
+  // Add new route for deleting a resume
+  app.delete("/api/resumes/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const { mode } = req.body;
-    if (!['share', 'collaborate'].includes(mode)) {
-      return res.status(400).json({ error: 'Invalid mode' });
+    // Verify ownership
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.id))
+      .limit(1);
+
+    if (!resume) return res.sendStatus(404);
+    if (resume.userId !== req.user.id) return res.sendStatus(403);
+
+    try {
+      // Delete the resume file
+      const filePath = path.join(process.cwd(), resume.fileUrl.substring(1)); //remove leading slash
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+
+      // Delete the resume from database
+      await db
+        .delete(resumes)
+        .where(eq(resumes.id, req.params.id));
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error deleting resume:', error);
+      res.status(500).json({ error: 'Failed to delete resume' });
+    }
+  });
+
+  // Add new route for toggling resume visibility
+  app.patch("/api/resumes/:id/visibility", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const { isVisible } = req.body;
+    if (typeof isVisible !== 'boolean') {
+      return res.status(400).json({ error: 'isVisible must be a boolean' });
     }
 
     // Verify ownership
@@ -147,15 +180,16 @@ export function registerRoutes(app: Express): Server {
 
     const [updatedResume] = await db
       .update(resumes)
-      .set({ 
-        mode,
-        updatedAt: resume.updatedAt 
+      .set({
+        isPublic: isVisible,
+        updatedAt: new Date()
       })
       .where(eq(resumes.id, req.params.id))
       .returning();
 
     res.json(updatedResume);
   });
+
 
   // Job offer routes
   app.post("/api/resumes/:id/offers", async (req, res) => {
