@@ -552,7 +552,6 @@ export function registerRoutes(app: Express): Server {
     res.json(searchResults.filter(user => user.id !== req.user.id));
   });
 
-
   // Add new route for network resumes
   app.get("/api/network/resumes", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -607,11 +606,8 @@ export function registerRoutes(app: Express): Server {
               resumes.userId,
               networkUsers.map((user) => user.connectedUserId)
             ),
-            or(
-              eq(resumes.isPublic, true),
-              eq(resumes.mode, 'share'),
-              eq(resumes.mode, 'collaborate')
-            )
+            // Only show resumes that are marked as public
+            eq(resumes.isPublic, true)
           )
         )
         .orderBy(desc(resumes.createdAt));
