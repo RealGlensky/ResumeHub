@@ -12,17 +12,15 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
-export function ResumeCard({ 
-  resume, 
-  user,
-  ownerName 
-}: { 
-  resume: Resume; 
+interface ResumeCardProps {
+  resume: Resume;
   user?: { id: number; username: string };
   ownerName?: string;
-}) {
+}
+
+function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
-  const { data: jobOffers = [] } = useQuery<JobOffer[]>({
+  const { data: jobOffers = [] } = useQuery<JobOffer[]>({ 
     queryKey: [`/api/resumes/${resume.id}/offers`],
   });
 
@@ -54,6 +52,18 @@ export function ResumeCard({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
+    },
+  });
+
+  const toggleMode = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/resumes/${resume.id}/mode`, {
+        mode: resume.mode === 'share' ? 'collaborate' : 'share'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
     },
   });
 
@@ -123,18 +133,34 @@ export function ResumeCard({
         </div>
 
         {isOwner && (
-          <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
-            <div className="space-y-1">
-              <h4 className="font-medium">Resume Visibility</h4>
-              <p className="text-sm text-muted-foreground">
-                {resume.isPublic ? 'Visible to connections' : 'Hidden from connections'}
-              </p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
+              <div className="space-y-1">
+                <h4 className="font-medium">Resume Visibility</h4>
+                <p className="text-sm text-muted-foreground">
+                  {resume.isPublic ? 'Visible to connections' : 'Hidden from connections'}
+                </p>
+              </div>
+              <Switch
+                checked={resume.isPublic}
+                onCheckedChange={() => toggleVisibility.mutate()}
+                disabled={toggleVisibility.isPending}
+              />
             </div>
-            <Switch
-              checked={resume.isPublic}
-              onCheckedChange={() => toggleVisibility.mutate()}
-              disabled={toggleVisibility.isPending}
-            />
+
+            <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
+              <div className="space-y-1">
+                <h4 className="font-medium">Resume Mode</h4>
+                <p className="text-sm text-muted-foreground">
+                  {resume.mode === 'share' ? 'Share Mode - Others can only view' : 'Collaborate Mode - Others can comment'}
+                </p>
+              </div>
+              <Switch
+                checked={resume.mode === 'collaborate'}
+                onCheckedChange={() => toggleMode.mutate()}
+                disabled={toggleMode.isPending}
+              />
+            </div>
           </div>
         )}
       </CardHeader>
@@ -211,3 +237,6 @@ export function ResumeCard({
     </Card>
   );
 }
+
+export { ResumeCard };
+export default ResumeCard;
