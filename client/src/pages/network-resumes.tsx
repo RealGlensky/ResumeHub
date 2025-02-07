@@ -5,6 +5,8 @@ import { ResumeCard } from "@/components/resume-card";
 import { Link } from "wouter";
 import { Home, Users } from "lucide-react";
 import type { Resume } from "@db/schema";
+import { NetworkResumeFilters, type SortOption } from "@/components/network-resume-filters";
+import { useState, useMemo } from "react";
 
 interface NetworkResume extends Resume {
   owner: {
@@ -15,10 +17,36 @@ interface NetworkResume extends Resume {
 
 export default function NetworkResumesPage() {
   const { user, logoutMutation } = useAuth();
+  const [activeSort, setActiveSort] = useState<SortOption>({ 
+    type: 'date', 
+    order: 'desc' 
+  });
+
   const { data: networkResumes = [] } = useQuery<NetworkResume[]>({ 
     queryKey: ["/api/network/resumes"],
     enabled: !!user
   });
+
+  const sortedResumes = useMemo(() => {
+    return [...networkResumes].sort((a, b) => {
+      switch (activeSort.type) {
+        case 'date':
+          return activeSort.order === 'desc'
+            ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'user':
+          return activeSort.order === 'desc'
+            ? b.owner.username.localeCompare(a.owner.username)
+            : a.owner.username.localeCompare(b.owner.username);
+        case 'mode':
+          return activeSort.order === 'desc'
+            ? b.mode.localeCompare(a.mode)
+            : a.mode.localeCompare(b.mode);
+        default:
+          return 0;
+      }
+    });
+  }, [networkResumes, activeSort]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,10 +77,14 @@ export default function NetworkResumesPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold">Network Resumes</h2>
+          <NetworkResumeFilters 
+            onSortChange={setActiveSort}
+            activeSort={activeSort}
+          />
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {networkResumes.map((resume) => (
+          {sortedResumes.map((resume) => (
             <ResumeCard 
               key={resume.id} 
               resume={resume}
@@ -62,7 +94,7 @@ export default function NetworkResumesPage() {
           ))}
         </div>
 
-        {networkResumes.length === 0 && (
+        {sortedResumes.length === 0 && (
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold mb-2">No network resumes yet</h3>
             <p className="text-muted-foreground">
