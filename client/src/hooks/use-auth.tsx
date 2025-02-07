@@ -38,6 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      // Invalidate all resume-related queries to trigger a refetch
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
     },
     onError: (error: Error) => {
       toast({
@@ -55,6 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      // Also invalidate queries after registration
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
     },
     onError: (error: Error) => {
       toast({
@@ -71,6 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      // Clear all resume-related queries from cache on logout
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      queryClient.removeQueries({ queryKey: ["/api/resumes"] });
+      queryClient.removeQueries({ queryKey: ["/api/network/resumes"] });
     },
     onError: (error: Error) => {
       toast({
