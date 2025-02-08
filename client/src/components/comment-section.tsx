@@ -14,6 +14,7 @@ type FormData = {
 };
 
 type ThreadedComment = Comment & {
+  username: string;
   replies?: ThreadedComment[];
 };
 
@@ -89,7 +90,7 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
       <div className="p-3 bg-secondary rounded-lg">
         <div className="flex items-center justify-between mb-2">
           <div className="font-medium">
-            {comment.userId === resumeUserId ? "Resume Owner" : isOwnComment ? "You" : "User"}
+            {comment.userId === resumeUserId ? "Resume Owner" : isOwnComment ? "You" : comment.username}
           </div>
           <div className="flex items-center gap-2">
             {isOwnComment && !isEditing && (
@@ -147,10 +148,10 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
             // 3. User wrote the reply themselves
             // 4. Reply is from the resume owner (visible to parent comment author)
             const isReplyFromResumeOwner = reply.userId === resumeUserId;
-            const canSeeReply = 
-              isResumeOwner || 
-              isOwnComment || 
-              reply.userId === user?.id || 
+            const canSeeReply =
+              isResumeOwner ||
+              isOwnComment ||
+              reply.userId === user?.id ||
               isReplyFromResumeOwner;
 
             if (!canSeeReply) {
@@ -161,8 +162,8 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
               <div key={reply.id} className="flex items-start gap-2">
                 <CornerDownRight className="h-4 w-4 mt-3 text-muted-foreground" />
                 <div className="flex-1">
-                  <CommentItem 
-                    comment={reply} 
+                  <CommentItem
+                    comment={reply}
                     onReply={onReply}
                     onEdit={onEdit}
                     isResumeOwner={isResumeOwner}

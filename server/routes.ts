@@ -332,10 +332,12 @@ export function registerRoutes(app: Express): Server {
         id: comments.id,
         content: comments.content,
         userId: comments.userId,
+        username: users.username,
         parentId: comments.parentId,
         createdAt: comments.createdAt,
       })
       .from(comments)
+      .leftJoin(users, eq(comments.userId, users.id))
       .where(eq(comments.resumeId, req.params.id))
       .orderBy(comments.createdAt);
 
