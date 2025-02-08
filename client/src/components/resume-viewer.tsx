@@ -6,23 +6,23 @@ import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure PDF.js worker
+// Configure worker
 const workerSrc = new URL(
-    './node_modules/pdfjs-dist/build/pdf.worker.min.mjs', // Full path from node_modules
-    import.meta.url // Still use import.meta.url for correct resolution
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
 ).toString();
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface ResumeViewerProps {
   resume: Resume;
-  mode: "share" | "collaborate";
+  mode: "share" | "create";
 }
 
 export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [numPages, setNumPages] = useState(0);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
 
@@ -41,18 +41,10 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
     const loadPDF = async () => {
       try {
         setIsLoading(true);
-        setLoadError(null);
+        setLoadError(false);
 
-        console.log('Loading PDF from URL:', fileUrl);
-
-        // Create loading task with simplified options
-        const loadingTask = pdfjsLib.getDocument({
-          url: fileUrl,
-          verbosity: 0
-        });
-
+        const loadingTask = pdfjsLib.getDocument(fileUrl);
         const pdf = await loadingTask.promise;
-        console.log('PDF loaded successfully, pages:', pdf.numPages);
         setNumPages(pdf.numPages);
 
         // Pre-render all pages
@@ -64,31 +56,20 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
             const viewport = page.getViewport({ scale: 1.5 });
             const context = canvas.getContext('2d');
 
-            if (!context) {
-              console.error('Failed to get canvas context');
-              continue;
-            }
-
             canvas.height = viewport.height;
             canvas.width = viewport.width;
 
-            try {
-              await page.render({
-                canvasContext: context,
-                viewport: viewport
-              }).promise;
-              console.log(`Page ${pageNum} rendered successfully`);
-            } catch (renderError) {
-              console.error(`Error rendering page ${pageNum}:`, renderError);
-              setLoadError(`Error rendering page ${pageNum}`);
-            }
+            await page.render({
+              canvasContext: context!,
+              viewport: viewport
+            }).promise;
           }
         }
 
         setIsLoading(false);
       } catch (error) {
         console.error('Error loading PDF:', error);
-        setLoadError(error instanceof Error ? error.message : 'Failed to load PDF');
+        setLoadError(true);
         setIsLoading(false);
       }
     };
@@ -110,7 +91,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         onClick={() => {
           setIsOpen(true);
           setIsLoading(true);
-          setLoadError(null);
+          setLoadError(false);
         }}
       >
         <FileText className="h-4 w-4" />
@@ -134,7 +115,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
             {loadError ? (
               <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
                 <AlertCircle className="h-5 w-5" />
-                {loadError}. Please try downloading it directly.
+                Failed to load PDF. Please try downloading it directly.
               </div>
             ) : (
               <>
