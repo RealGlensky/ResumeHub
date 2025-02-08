@@ -6,8 +6,8 @@ import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configure worker using bundled worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -39,11 +39,17 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setLoadError(null);
 
         console.log('Loading PDF from URL:', fileUrl);
+
+        // Create loading task with additional options
         const loadingTask = pdfjsLib.getDocument({
           url: fileUrl,
-          cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-          cMapPacked: true,
+          disableRange: true,
+          disableStream: true,
         });
+
+        loadingTask.onProgress = (progress) => {
+          console.log('Loading progress:', Math.round(progress.loaded / progress.total * 100) + '%');
+        };
 
         const pdf = await loadingTask.promise;
         console.log('PDF loaded successfully, pages:', pdf.numPages);
