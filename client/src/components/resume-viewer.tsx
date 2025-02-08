@@ -7,11 +7,10 @@ import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocumentProxy } from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
 // Configure worker
-console.log('PDF.js worker:', pdfjsLib.GlobalWorkerOptions.workerSrc);
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-console.log('PDF.js worker after setting:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 interface ResumeViewerProps {
   resume: Resume;
