@@ -75,8 +75,8 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner }: {
 
   const isOwnComment = comment.userId === user?.id;
 
-  // Only show comments if user is the comment owner or resume owner
-  if (!isOwnComment && !isResumeOwner) {
+  // If not the resume owner and not the comment author, hide the comment
+  if (!isResumeOwner && !isOwnComment) {
     return null;
   }
 
@@ -143,7 +143,7 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner }: {
                 <CommentItem 
                   comment={reply} 
                   onReply={onReply}
-                  onEdit={handleEdit}
+                  onEdit={onEdit}
                   isResumeOwner={isResumeOwner}
                 />
               </div>
