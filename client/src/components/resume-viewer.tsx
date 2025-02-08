@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -44,7 +43,11 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setIsLoading(true);
         setLoadError(false);
 
-        const loadingTask = pdfjsLib.getDocument(fileUrl);
+        // First fetch the PDF file as an array buffer
+        const response = await fetch(fileUrl);
+        const pdfData = await response.arrayBuffer();
+
+        const loadingTask = pdfjsLib.getDocument({ data: pdfData });
         const pdf = await loadingTask.promise;
         setNumPages(pdf.numPages);
 
