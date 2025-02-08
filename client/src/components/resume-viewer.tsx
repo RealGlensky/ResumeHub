@@ -6,8 +6,9 @@ import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure worker using bundled worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+// Use fake worker to avoid worker loading issues
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+pdfjsLib.GlobalWorkerOptions.disableWorker = true;
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -40,15 +41,19 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
 
         console.log('Loading PDF from URL:', fileUrl);
 
-        // Create loading task with additional options
+        // Create loading task with simplified options
         const loadingTask = pdfjsLib.getDocument({
           url: fileUrl,
-          disableRange: true,
+          disableAutoFetch: true,
           disableStream: true,
+          isEvalSupported: false,
+          useSystemFonts: true,
         });
 
-        loadingTask.onProgress = (progress) => {
-          console.log('Loading progress:', Math.round(progress.loaded / progress.total * 100) + '%');
+        // Add progress logging
+        loadingTask.onProgress = (progress: { loaded: number; total: number }) => {
+          const percentage = Math.round((progress.loaded / progress.total) * 100);
+          console.log(`Loading progress: ${percentage}%`);
         };
 
         const pdf = await loadingTask.promise;
