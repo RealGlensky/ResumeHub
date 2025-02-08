@@ -75,8 +75,12 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner }: {
 
   const isOwnComment = comment.userId === user?.id;
 
-  // If not the resume owner and not the comment author, hide the comment
-  if (!isResumeOwner && !isOwnComment) {
+  // Determine visibility:
+  // 1. Resume owners can see all comments
+  // 2. Users can see their own comments
+  // 3. Comment authors can see replies from the resume owner
+  const shouldShowComment = isResumeOwner || isOwnComment;
+  if (!shouldShowComment) {
     return null;
   }
 
@@ -136,19 +140,32 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner }: {
 
       {comment.replies && comment.replies.length > 0 && (
         <div className="ml-8 space-y-2">
-          {comment.replies.map((reply) => (
-            <div key={reply.id} className="flex items-start gap-2">
-              <CornerDownRight className="h-4 w-4 mt-3 text-muted-foreground" />
-              <div className="flex-1">
-                <CommentItem 
-                  comment={reply} 
-                  onReply={onReply}
-                  onEdit={onEdit}
-                  isResumeOwner={isResumeOwner}
-                />
+          {comment.replies.map((reply) => {
+            // Show reply if:
+            // 1. User is the resume owner
+            // 2. User is the reply author
+            // 3. User is the parent comment author AND reply is from resume owner
+            const isReplyFromOwner = reply.userId === comment.userId;
+            const shouldShowReply = isResumeOwner || 
+              reply.userId === user?.id || 
+              (isOwnComment && isReplyFromOwner);
+
+            if (!shouldShowReply) return null;
+
+            return (
+              <div key={reply.id} className="flex items-start gap-2">
+                <CornerDownRight className="h-4 w-4 mt-3 text-muted-foreground" />
+                <div className="flex-1">
+                  <CommentItem 
+                    comment={reply} 
+                    onReply={onReply}
+                    onEdit={onEdit}
+                    isResumeOwner={isResumeOwner}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
