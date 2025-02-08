@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FileText, AlertCircle, Download } from "lucide-react";
-import type { Resume } from "@db/schema";
+import { FileText, AlertCircle, Download, MessageSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CommentSection } from "./comment-section";
+import type { Resume } from "@db/schema";
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure worker
@@ -16,7 +17,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface ResumeViewerProps {
   resume: Resume;
-  mode: "share" | "create";
+  mode: "share" | "collaborate";
 }
 
 export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
@@ -24,6 +25,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [numPages, setNumPages] = useState(0);
+  const [showComments, setShowComments] = useState(false);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
 
   // Get the absolute URL for the resume file
@@ -109,37 +111,57 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
               <FileText className="h-5 w-5" />
               {resume.title}
             </span>
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </Button>
+            <div className="flex items-center gap-2">
+              {mode === "collaborate" && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowComments(!showComments)}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  {showComments ? "Hide Comments" : "Show Comments"}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleDownload}>
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
+            </div>
           </DialogTitle>
 
-          <div className="flex-1 overflow-y-auto bg-muted rounded-lg relative mt-4 p-4">
-            {loadError ? (
-              <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
-                <AlertCircle className="h-5 w-5" />
-                Failed to load PDF. Please try downloading it directly.
+          <div className="flex-1 overflow-y-auto bg-muted rounded-lg relative mt-4">
+            <div className="p-4">
+              {loadError ? (
+                <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  Failed to load PDF. Please try downloading it directly.
+                </div>
+              ) : (
+                <>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Skeleton className="w-full h-full" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {Array.from({ length: numPages }, (_, i) => (
+                        <div key={i} className="flex justify-center">
+                          <canvas
+                            ref={el => canvasRefs.current[i] = el}
+                            className="shadow-lg"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {mode === "collaborate" && showComments && (
+              <div className="border-t bg-background p-4">
+                <CommentSection resumeId={resume.id} />
               </div>
-            ) : (
-              <>
-                {isLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Skeleton className="w-full h-full" />
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {Array.from({ length: numPages }, (_, i) => (
-                      <div key={i} className="flex justify-center">
-                        <canvas
-                          ref={el => canvasRefs.current[i] = el}
-                          className="shadow-lg"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
             )}
           </div>
         </DialogContent>

@@ -169,7 +169,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
         <div className="space-y-4">
           <ResumeViewer
             resume={resume}
-            mode={resume.mode}
+            mode={resume.mode === 'collaborate' ? 'collaborate' : 'share'}
           />
 
           <div className="flex items-center gap-4">
