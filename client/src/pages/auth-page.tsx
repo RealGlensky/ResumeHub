@@ -27,7 +27,7 @@ export default function AuthPage() {
         <Card className="w-full max-w-md mx-4">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-center">
-              Welcome to ResumeTrack
+              Welcome to ResumeBook
             </CardTitle>
           </CardHeader>
           <CardContent>

@@ -16,7 +16,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">ResumeTrack</h1>
+          <h1 className="text-2xl font-bold">ResumeBook</h1>
           <div className="flex items-center gap-4">
             <Link href="/network">
               <Button variant="ghost" className="gap-2">
