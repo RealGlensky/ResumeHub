@@ -76,12 +76,8 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
 
   const isOwnComment = comment.userId === user?.id;
 
-  // Determine visibility:
-  // 1. Resume owners can see all comments
-  // 2. Users can see their own comments
-  // 3. Comment authors can see replies from the resume owner
-  const shouldShowComment = isResumeOwner || isOwnComment;
-  if (!shouldShowComment) {
+  // Basic visibility check - either resume owner or comment author
+  if (!isResumeOwner && !isOwnComment) {
     return null;
   }
 
@@ -142,16 +138,15 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
       {comment.replies && comment.replies.length > 0 && (
         <div className="ml-8 space-y-2">
           {comment.replies.map((reply) => {
-            // Show reply if:
-            // 1. User is the resume owner
-            // 2. User is the reply author
-            // 3. User is the parent comment author AND reply is from resume owner
-            const isReplyFromOwner = reply.userId === resumeUserId;
-            const shouldShowReply = isResumeOwner || 
-              reply.userId === user?.id || 
-              (isOwnComment && isReplyFromOwner);
-
-            if (!shouldShowReply) return null;
+            // For replies, show them if:
+            // 1. The user is the resume owner
+            // 2. The user wrote the parent comment and the reply is from the resume owner
+            // 3. The user wrote the reply
+            if (!isResumeOwner && !isOwnComment && reply.userId !== user?.id) {
+              if (!(isOwnComment && reply.userId === resumeUserId)) {
+                return null;
+              }
+            }
 
             return (
               <div key={reply.id} className="flex items-start gap-2">
