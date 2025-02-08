@@ -7,9 +7,11 @@ import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocumentProxy } from 'pdfjs-dist';
+import { GlobalWorkerOptions } from 'pdfjs-dist/build/pdf';
+import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
 // Configure worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/node_modules/pdfjs-dist/build/pdf.worker.min.js';
+GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 interface ResumeViewerProps {
   resume: Resume;
