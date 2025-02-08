@@ -63,16 +63,22 @@ function CommentForm({ onSubmit, placeholder = "Add a comment...", defaultValue 
   );
 }
 
-function CommentItem({ comment, onReply, onEdit }: {
+function CommentItem({ comment, onReply, onEdit, isResumeOwner }: {
   comment: ThreadedComment;
   onReply: (parentId: number, data: FormData) => void;
   onEdit: (commentId: number, data: FormData) => void;
+  isResumeOwner: boolean;
 }) {
   const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
   const isOwnComment = comment.userId === user?.id;
+
+  // Only show comments if user is the comment owner or resume owner
+  if (!isOwnComment && !isResumeOwner) {
+    return null;
+  }
 
   return (
     <div className="space-y-2">
@@ -137,7 +143,8 @@ function CommentItem({ comment, onReply, onEdit }: {
                 <CommentItem 
                   comment={reply} 
                   onReply={onReply}
-                  onEdit={onEdit}
+                  onEdit={handleEdit}
+                  isResumeOwner={isResumeOwner}
                 />
               </div>
             </div>
@@ -148,12 +155,14 @@ function CommentItem({ comment, onReply, onEdit }: {
   );
 }
 
-export function CommentSection({ resumeId }: { resumeId: string }) {
+export function CommentSection({ resumeId, resumeUserId }: { resumeId: string; resumeUserId: number }) {
   const { user } = useAuth();
 
   const { data: comments = [] } = useQuery<ThreadedComment[]>({
     queryKey: [`/api/resumes/${resumeId}/comments`],
   });
+
+  const isResumeOwner = user?.id === resumeUserId;
 
   const commentMutation = useMutation({
     mutationFn: async ({ content, parentId }: { content: string; parentId?: number }) => {
@@ -206,6 +215,7 @@ export function CommentSection({ resumeId }: { resumeId: string }) {
             comment={comment}
             onReply={handleReply}
             onEdit={handleEdit}
+            isResumeOwner={isResumeOwner}
           />
         ))}
       </div>

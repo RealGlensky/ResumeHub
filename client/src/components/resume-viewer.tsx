@@ -160,7 +160,10 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
 
             {mode === "collaborate" && showComments && (
               <div className="border-t bg-background p-4">
-                <CommentSection resumeId={resume.id} />
+                <CommentSection 
+                  resumeId={resume.id} 
+                  resumeUserId={resume.userId}
+                />
               </div>
             )}
           </div>
