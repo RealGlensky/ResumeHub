@@ -76,10 +76,11 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
 
   const isOwnComment = comment.userId === user?.id;
 
-  // Show comments if:
+  // Always show comments if:
   // 1. User is the resume owner (can see all comments)
   // 2. User is the comment author (can see their own comments)
-  if (!isResumeOwner && !isOwnComment) {
+  // 3. Comment is from the resume owner (shown to everyone)
+  if (!isResumeOwner && !isOwnComment && comment.userId !== resumeUserId) {
     return null;
   }
 
@@ -88,7 +89,7 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
       <div className="p-3 bg-secondary rounded-lg">
         <div className="flex items-center justify-between mb-2">
           <div className="font-medium">
-            {isOwnComment ? "You" : "User"}
+            {comment.userId === resumeUserId ? "Resume Owner" : isOwnComment ? "You" : "User"}
           </div>
           <div className="flex items-center gap-2">
             {isOwnComment && !isEditing && (
@@ -141,14 +142,16 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
         <div className="ml-8 space-y-2">
           {comment.replies.map((reply) => {
             // Show replies if:
-            // 1. User is the resume owner (sees all)
-            // 2. User wrote the parent comment and reply is from resume owner
-            // 3. User wrote the reply
+            // 1. User is the resume owner (can see all)
+            // 2. User wrote the parent comment (can see all replies to their comment)
+            // 3. User wrote the reply themselves
+            // 4. Reply is from the resume owner (visible to parent comment author)
             const isReplyFromResumeOwner = reply.userId === resumeUserId;
             const canSeeReply = 
               isResumeOwner || 
+              isOwnComment || 
               reply.userId === user?.id || 
-              (isOwnComment && isReplyFromResumeOwner);
+              isReplyFromResumeOwner;
 
             if (!canSeeReply) {
               return null;
