@@ -229,7 +229,10 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
             </div>
           ) : (
             (isOwner || resume.mode === 'collaborate') && (
-              <CommentSection resumeId={resume.id} />
+              <CommentSection 
+                resumeId={resume.id} 
+                resumeUserId={resume.userId}
+              />
             )
           )}
         </div>
