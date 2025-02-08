@@ -7,7 +7,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+const workerSrc = new URL(
+  'node_modules/pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url
+);
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc.toString();
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -41,7 +46,10 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         console.log('Loading PDF from URL:', fileUrl);
 
         // Create loading task with simplified options
-        const loadingTask = pdfjsLib.getDocument(fileUrl);
+        const loadingTask = pdfjsLib.getDocument({
+          url: fileUrl,
+          verbosity: 0
+        });
 
         const pdf = await loadingTask.promise;
         console.log('PDF loaded successfully, pages:', pdf.numPages);
