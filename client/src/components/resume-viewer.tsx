@@ -8,8 +8,8 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure PDF.js worker
 const workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url,
+  './pdfjs-dist/build/pdf.worker.min.mjs', // Relative path!
+  import.meta.url // Still use import.meta.url for correct resolution
 ).toString();
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
