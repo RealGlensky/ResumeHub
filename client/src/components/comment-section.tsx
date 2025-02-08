@@ -85,10 +85,8 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
     return null;
   }
 
-  const displayName = isOwnComment 
-    ? "You" 
-    : comment.userId === resumeUserId 
-    ? "Resume Owner" 
+  const displayName = isOwnComment
+    ? "You"
     : comment.username;
 
   return (
