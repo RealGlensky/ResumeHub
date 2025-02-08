@@ -85,12 +85,18 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
     return null;
   }
 
+  const displayName = isOwnComment 
+    ? "You" 
+    : comment.userId === resumeUserId 
+    ? "Resume Owner" 
+    : comment.username;
+
   return (
     <div className="space-y-2">
       <div className="p-3 bg-secondary rounded-lg">
         <div className="flex items-center justify-between mb-2">
           <div className="font-medium">
-            {comment.userId === resumeUserId ? "Resume Owner" : isOwnComment ? "You" : comment.username}
+            {displayName}
           </div>
           <div className="flex items-center gap-2">
             {isOwnComment && !isEditing && (
