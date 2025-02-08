@@ -142,12 +142,13 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
           {comment.replies.map((reply) => {
             // Show replies if:
             // 1. User is the resume owner (sees all)
-            // 2. User wrote the reply
-            // 3. User wrote the parent comment and reply is from resume owner
+            // 2. User wrote the parent comment and reply is from resume owner
+            // 3. User wrote the reply
+            const isReplyFromResumeOwner = reply.userId === resumeUserId;
             const canSeeReply = 
               isResumeOwner || 
               reply.userId === user?.id || 
-              (isOwnComment && reply.userId === resumeUserId);
+              (isOwnComment && isReplyFromResumeOwner);
 
             if (!canSeeReply) {
               return null;
