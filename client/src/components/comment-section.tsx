@@ -76,7 +76,9 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
 
   const isOwnComment = comment.userId === user?.id;
 
-  // Basic visibility check - either resume owner or comment author
+  // Show comments if:
+  // 1. User is the resume owner (can see all comments)
+  // 2. User is the comment author (can see their own comments)
   if (!isResumeOwner && !isOwnComment) {
     return null;
   }
@@ -138,14 +140,17 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
       {comment.replies && comment.replies.length > 0 && (
         <div className="ml-8 space-y-2">
           {comment.replies.map((reply) => {
-            // For replies, show them if:
-            // 1. The user is the resume owner
-            // 2. The user wrote the parent comment and the reply is from the resume owner
-            // 3. The user wrote the reply
-            if (!isResumeOwner && !isOwnComment && reply.userId !== user?.id) {
-              if (!(isOwnComment && reply.userId === resumeUserId)) {
-                return null;
-              }
+            // Show replies if:
+            // 1. User is the resume owner (sees all)
+            // 2. User wrote the reply
+            // 3. User wrote the parent comment and reply is from resume owner
+            const canSeeReply = 
+              isResumeOwner || 
+              reply.userId === user?.id || 
+              (isOwnComment && reply.userId === resumeUserId);
+
+            if (!canSeeReply) {
+              return null;
             }
 
             return (
