@@ -63,11 +63,12 @@ function CommentForm({ onSubmit, placeholder = "Add a comment...", defaultValue 
   );
 }
 
-function CommentItem({ comment, onReply, onEdit, isResumeOwner }: {
+function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: {
   comment: ThreadedComment;
   onReply: (parentId: number, data: FormData) => void;
   onEdit: (commentId: number, data: FormData) => void;
   isResumeOwner: boolean;
+  resumeUserId: number;
 }) {
   const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -145,7 +146,7 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner }: {
             // 1. User is the resume owner
             // 2. User is the reply author
             // 3. User is the parent comment author AND reply is from resume owner
-            const isReplyFromOwner = reply.userId === comment.userId;
+            const isReplyFromOwner = reply.userId === resumeUserId;
             const shouldShowReply = isResumeOwner || 
               reply.userId === user?.id || 
               (isOwnComment && isReplyFromOwner);
@@ -161,6 +162,7 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner }: {
                     onReply={onReply}
                     onEdit={onEdit}
                     isResumeOwner={isResumeOwner}
+                    resumeUserId={resumeUserId}
                   />
                 </div>
               </div>
@@ -233,6 +235,7 @@ export function CommentSection({ resumeId, resumeUserId }: { resumeId: string; r
             onReply={handleReply}
             onEdit={handleEdit}
             isResumeOwner={isResumeOwner}
+            resumeUserId={resumeUserId}
           />
         ))}
       </div>
