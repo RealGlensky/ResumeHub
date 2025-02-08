@@ -8,11 +8,11 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure PDF.js worker
 const workerSrc = new URL(
-  'node_modules/pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url
-);
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
+).toString();
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc.toString();
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface ResumeViewerProps {
   resume: Resume;
