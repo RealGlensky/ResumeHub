@@ -8,8 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 import { GlobalWorkerOptions } from 'pdfjs-dist/build/pdf';
+import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
+
 // Configure worker
-GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 interface ResumeViewerProps {
   resume: Resume;
