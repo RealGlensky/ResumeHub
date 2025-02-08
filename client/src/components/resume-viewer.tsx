@@ -9,8 +9,9 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocumentProxy } from 'pdfjs-dist';
 
 // Configure worker
-console.log('PDF.js worker URL:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+console.log('PDF.js worker:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+console.log('PDF.js worker after setting:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 
 interface ResumeViewerProps {
   resume: Resume;
