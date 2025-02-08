@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,11 +5,14 @@ import { FileText, AlertCircle, Download } from "lucide-react";
 import type { Resume } from "@db/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjsLib from 'pdfjs-dist';
-import { PDFDocumentProxy } from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.entry';
 
 // Configure worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+const workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url,
+).toString();
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface ResumeViewerProps {
   resume: Resume;
@@ -24,6 +26,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
 
+  // Get the absolute URL for the resume file
   const fileUrl = resume.fileUrl.startsWith('http') 
     ? resume.fileUrl 
     : `${window.location.origin}${resume.fileUrl}`;
@@ -40,29 +43,30 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         setIsLoading(true);
         setLoadError(false);
 
-        const loadingTask = pdfjsLib.getDocument(fileUrl);
-        const pdf: PDFDocumentProxy = await loadingTask.promise;
-        
-        setNumPages(pdf.numPages);
-        canvasRefs.current = Array(pdf.numPages).fill(null);
+        // First fetch the PDF file as an array buffer
+        const response = await fetch(fileUrl);
+        const pdfData = await response.arrayBuffer();
 
+        const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+        const pdf = await loadingTask.promise;
+        setNumPages(pdf.numPages);
+
+        // Pre-render all pages
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
           const page = await pdf.getPage(pageNum);
           const canvas = canvasRefs.current[pageNum - 1];
-          
+
           if (canvas) {
             const viewport = page.getViewport({ scale: 1.5 });
             const context = canvas.getContext('2d');
-            
-            if (context) {
-              canvas.height = viewport.height;
-              canvas.width = viewport.width;
-              
-              await page.render({
-                canvasContext: context,
-                viewport: viewport
-              }).promise;
-            }
+
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            await page.render({
+              canvasContext: context!,
+              viewport: viewport
+            }).promise;
           }
         }
 
@@ -76,6 +80,11 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
 
     loadPDF();
   }, [isOpen, fileUrl]);
+
+  // Update canvas refs array when numPages changes
+  useEffect(() => {
+    canvasRefs.current = Array(numPages).fill(null);
+  }, [numPages]);
 
   return (
     <>
@@ -112,21 +121,25 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
                 <AlertCircle className="h-5 w-5" />
                 Failed to load PDF. Please try downloading it directly.
               </div>
-            ) : isLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <Skeleton className="w-full h-full" />
-              </div>
             ) : (
-              <div className="space-y-4">
-                {Array.from({ length: numPages }, (_, i) => (
-                  <div key={i} className="flex justify-center">
-                    <canvas
-                      ref={el => canvasRefs.current[i] = el}
-                      className="shadow-lg"
-                    />
+              <>
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Skeleton className="w-full h-full" />
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <div className="space-y-4">
+                    {Array.from({ length: numPages }, (_, i) => (
+                      <div key={i} className="flex justify-center">
+                        <canvas
+                          ref={el => canvasRefs.current[i] = el}
+                          className="shadow-lg"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </DialogContent>
