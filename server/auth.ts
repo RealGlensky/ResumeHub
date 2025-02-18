@@ -7,7 +7,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, insertUserSchema, type SelectUser } from "@db/schema";
 import { db, pool } from "@db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 
 declare global {
@@ -32,8 +32,17 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-async function getUserByUsername(username: string) {
-  return db.select().from(users).where(eq(users.username, username)).limit(1);
+async function getUserByUsernameOrEmail(identifier: string) {
+  return db
+    .select()
+    .from(users)
+    .where(
+      or(
+        eq(users.username, identifier),
+        eq(users.email, identifier)
+      )
+    )
+    .limit(1);
 }
 
 export function setupAuth(app: Express) {
@@ -54,14 +63,22 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      const [user] = await getUserByUsername(username);
-      if (!user || !(await comparePasswords(password, user.password))) {
-        return done(null, false);
-      } else {
-        return done(null, user);
+    new LocalStrategy(
+      {
+        usernameField: 'username', // We'll use this field for both username and email
+      },
+      async (identifier, password, done) => {
+        try {
+          const [user] = await getUserByUsernameOrEmail(identifier);
+          if (!user || !(await comparePasswords(password, user.password))) {
+            return done(null, false);
+          }
+          return done(null, user);
+        } catch (error) {
+          return done(error);
+        }
       }
-    }),
+    )
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
@@ -82,9 +99,9 @@ export function setupAuth(app: Express) {
       return res.status(400).send(error.toString());
     }
 
-    const [existingUser] = await getUserByUsername(result.data.username);
+    const [existingUser] = await getUserByUsernameOrEmail(result.data.username);
     if (existingUser) {
-      return res.status(400).send("Username already exists");
+      return res.status(400).send("Username or Email already exists");
     }
 
     const [user] = await db
