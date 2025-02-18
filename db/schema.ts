@@ -1,9 +1,13 @@
 import { pgTable, text, serial, integer, boolean, timestamp, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
+import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  email: text("email").unique().notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -95,9 +99,24 @@ export const commentRelations = relations(comments, ({ one, many }) => ({
   }),
 }));
 
-// Schemas for insert and select operations
-export const insertUserSchema = createInsertSchema(users);
+// Custom password validation
+const passwordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+
+// Update the user schema with new fields and password validation
+export const insertUserSchema = createInsertSchema(users, {
+  password: passwordSchema,
+  email: z.string().email("Invalid email address"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+});
+
 export const selectUserSchema = createSelectSchema(users);
+
 export const insertResumeSchema = createInsertSchema(resumes);
 export const insertJobOfferSchema = createInsertSchema(jobOffers);
 export const insertCommentSchema = createInsertSchema(comments);
