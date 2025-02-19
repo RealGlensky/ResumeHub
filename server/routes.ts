@@ -226,7 +226,7 @@ export function registerRoutes(app: Express): Server {
   app.patch("/api/user/profile", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
-    const { firstName, lastName, email } = req.body;
+    const { firstName, lastName, email, linkedinUrl, jobTitle, profileDescription, city, state, country } = req.body;
 
     try {
       // Check if email is already taken by another user
@@ -252,6 +252,12 @@ export function registerRoutes(app: Express): Server {
           firstName,
           lastName,
           email,
+          linkedinUrl,
+          jobTitle,
+          profileDescription,
+          city,
+          state,
+          country,
           updatedAt: new Date(),
         })
         .where(eq(users.id, req.user.id))

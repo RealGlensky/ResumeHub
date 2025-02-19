@@ -10,6 +10,12 @@ export const users = pgTable("users", {
   lastName: text("last_name").notNull(),
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
+  linkedinUrl: text("linkedin_url"),
+  jobTitle: text("job_title"),
+  profileDescription: text("profile_description"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
