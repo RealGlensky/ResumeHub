@@ -448,13 +448,14 @@ export function registerRoutes(app: Express): Server {
       return res.sendStatus(403);
     }
 
-    // Fetch comments with their replies
+    // Fetch comments with their replies and profile pictures
     const allComments = await db
       .select({
         id: comments.id,
         content: comments.content,
         userId: comments.userId,
         username: users.username,
+        profilePictureUrl: users.profilePictureUrl,
         parentId: comments.parentId,
         createdAt: comments.createdAt,
       })
@@ -464,7 +465,7 @@ export function registerRoutes(app: Express): Server {
       .orderBy(comments.createdAt);
 
     // Organize comments into threads
-    const threadedComments = allComments.reduce((acc, comment) => {
+    const threadedComments = allComments.reduce((acc: any, comment) => {
       if (!comment.parentId) {
         // This is a root comment
         acc[comment.id] = {

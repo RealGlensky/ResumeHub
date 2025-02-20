@@ -8,6 +8,7 @@ import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { MessageSquare, CornerDownRight, Pencil } from "lucide-react";
 import type { Comment } from "@db/schema";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type FormData = {
   content: string;
@@ -15,6 +16,7 @@ type FormData = {
 
 type ThreadedComment = Comment & {
   username: string;
+  profilePictureUrl?: string;
   replies?: ThreadedComment[];
 };
 
@@ -77,10 +79,6 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
 
   const isOwnComment = comment.userId === user?.id;
 
-  // Always show comments if:
-  // 1. User is the resume owner (can see all comments)
-  // 2. User is the comment author (can see their own comments)
-  // 3. Comment is from the resume owner (shown to everyone)
   if (!isResumeOwner && !isOwnComment && comment.userId !== resumeUserId) {
     return null;
   }
@@ -93,8 +91,19 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
     <div className="space-y-2">
       <div className="p-3 bg-secondary rounded-lg">
         <div className="flex items-center justify-between mb-2">
-          <div className="font-medium">
-            {displayName}
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              {comment.profilePictureUrl ? (
+                <AvatarImage src={comment.profilePictureUrl} alt={displayName} />
+              ) : (
+                <AvatarFallback>
+                  {displayName[0].toUpperCase()}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div className="font-medium">
+              {displayName}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {isOwnComment && !isEditing && (
@@ -145,12 +154,7 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
 
       {comment.replies && comment.replies.length > 0 && (
         <div className="ml-8 space-y-2">
-          {comment.replies.map((reply) => {
-            // Show replies if:
-            // 1. User is the resume owner (can see all)
-            // 2. User wrote the parent comment (can see all replies to their comment)
-            // 3. User wrote the reply themselves
-            // 4. Reply is from the resume owner (visible to parent comment author)
+          {comment.replies.map((reply: ThreadedComment) => {
             const isReplyFromResumeOwner = reply.userId === resumeUserId;
             const canSeeReply =
               isResumeOwner ||
