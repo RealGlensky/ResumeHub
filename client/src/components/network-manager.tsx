@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
-import { Check, X, Search, UserPlus } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type NetworkInvitation = {
@@ -32,23 +31,8 @@ type NetworkConnection = {
   };
 };
 
-type User = {
-  id: number;
-  username: string;
-};
-
 export function NetworkManager() {
-  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
-
-  const { data: searchResults = [] } = useQuery<User[]>({
-    queryKey: ["/api/users/search", searchQuery],
-    queryFn: () =>
-      searchQuery
-        ? fetch(`/api/users/search?query=${encodeURIComponent(searchQuery)}`).then(r => r.json())
-        : Promise.resolve([]),
-    enabled: searchQuery.length > 0,
-  });
 
   const { data: invitations = [] } = useQuery<NetworkInvitation[]>({
     queryKey: ["/api/network/invitations"],
@@ -85,76 +69,12 @@ export function NetworkManager() {
     },
   });
 
-  const sendInvitation = useMutation({
-    mutationFn: async (receiverId: number) => {
-      return apiRequest("POST", "/api/network/invite", { receiverId });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Invitation Sent",
-        description: "Your connection request has been sent successfully.",
-      });
-      // Invalidate invitations to show the newly sent invitation
-      queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
-      setSearchQuery("");
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to send invitation. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Split invitations into sent and received
   const receivedInvitations = invitations.filter(inv => inv.type === 'received' && inv.status === 'pending');
   const sentInvitations = invitations.filter(inv => inv.type === 'sent' && inv.status === 'pending');
 
   return (
     <div className="space-y-6">
-      {/* Search and Invite Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Find Users</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Search by username..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Button variant="secondary" size="icon">
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {searchResults.length > 0 && (
-              <div className="space-y-2">
-                {searchResults.map((user) => (
-                  <div
-                    key={user.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <p className="font-medium">{user.username}</p>
-                    <Button
-                      size="sm"
-                      onClick={() => sendInvitation.mutate(user.id)}
-                      disabled={sendInvitation.isPending}
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Connect
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Received Invitations Section */}
       <Card>
         <CardHeader>
