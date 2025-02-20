@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ interface ImageCropperProps {
 }
 
 export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCropperProps) {
-  const cropSize = 300; // Fixed size for the crop area
+  const cropSize = 250; // Fixed size for the crop area
   const [crop, setCrop] = useState<Crop>({
     unit: 'px',
     width: cropSize,
@@ -31,7 +31,7 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
   const imageRef = useRef<HTMLImageElement>(null);
 
   // Load the image when the file changes
-  useState(() => {
+  useEffect(() => {
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
@@ -39,7 +39,19 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
       };
       reader.readAsDataURL(file);
     }
-  });
+  }, [file]);
+
+  // Center the crop when the image loads
+  useEffect(() => {
+    if (imageRef.current && imageSrc) {
+      const { width, height } = imageRef.current;
+      setCrop(prev => ({
+        ...prev,
+        x: Math.max(0, (width - cropSize) / 2),
+        y: Math.max(0, (height - cropSize) / 2)
+      }));
+    }
+  }, [imageSrc, cropSize]);
 
   const getCroppedImg = async () => {
     if (!imageRef.current) return;
@@ -104,30 +116,28 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Adjust Profile Picture</DialogTitle>
         </DialogHeader>
         <div className="mt-4 flex flex-col items-center space-y-4">
-          <div className="relative w-[600px] h-[400px] overflow-hidden bg-muted">
+          <div className="relative w-full aspect-square bg-muted">
             {imageSrc && (
               <ReactCrop
                 crop={crop}
-                onChange={c => {
+                onChange={(_, percentCrop) => {
                   // Ensure the crop remains circular and fixed size
-                  setCrop({
-                    ...c,
-                    width: cropSize,
-                    height: cropSize,
-                    unit: 'px'
-                  });
+                  setCrop(prev => ({
+                    ...prev,
+                    x: percentCrop.x,
+                    y: percentCrop.y,
+                  }));
                 }}
                 aspect={1}
                 circularCrop
                 keepSelection
                 minWidth={cropSize}
                 minHeight={cropSize}
-                ruleOfThirds
               >
                 <img
                   ref={imageRef}
@@ -136,11 +146,11 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
                   style={{ 
                     transform: `scale(${zoom})`,
                     transformOrigin: 'center',
-                    maxWidth: 'none',
-                    maxHeight: 'none',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
                     cursor: 'move'
                   }}
-                  className="h-[400px] w-auto"
                 />
               </ReactCrop>
             )}
