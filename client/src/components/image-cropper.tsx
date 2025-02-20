@@ -18,12 +18,13 @@ interface ImageCropperProps {
 }
 
 export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCropperProps) {
+  const cropSize = 300; // Fixed size for the crop area
   const [crop, setCrop] = useState<Crop>({
-    unit: '%',
-    width: 80,
-    height: 80,
-    x: 10,
-    y: 10,
+    unit: 'px',
+    width: cropSize,
+    height: cropSize,
+    x: 0,
+    y: 0,
   });
   const [zoom, setZoom] = useState<number>(1);
   const [imageSrc, setImageSrc] = useState<string>('');
@@ -44,7 +45,7 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
     if (!imageRef.current) return;
 
     const canvas = document.createElement('canvas');
-    const size = 400; // Fixed size for profile picture
+    const size = 400; // Final profile picture size
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
@@ -103,19 +104,29 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>Adjust Profile Picture</DialogTitle>
         </DialogHeader>
         <div className="mt-4 flex flex-col items-center space-y-4">
-          <div className="relative w-full max-w-[300px] aspect-square rounded-full overflow-hidden">
+          <div className="relative w-[600px] h-[400px] overflow-hidden bg-muted">
             {imageSrc && (
               <ReactCrop
                 crop={crop}
-                onChange={c => setCrop(c)}
+                onChange={c => {
+                  // Ensure the crop remains circular and fixed size
+                  setCrop({
+                    ...c,
+                    width: cropSize,
+                    height: cropSize,
+                    unit: 'px'
+                  });
+                }}
                 aspect={1}
                 circularCrop
-                className="max-h-[300px]"
+                keepSelection
+                minWidth={cropSize}
+                minHeight={cropSize}
               >
                 <img
                   ref={imageRef}
@@ -123,15 +134,17 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
                   alt="Crop preview"
                   style={{ 
                     transform: `scale(${zoom})`,
-                    transformOrigin: 'center'
+                    transformOrigin: 'center',
+                    maxWidth: 'none',
+                    maxHeight: 'none'
                   }}
-                  className="max-w-none"
+                  className="h-[400px] w-auto"
                 />
               </ReactCrop>
             )}
           </div>
 
-          <div className="w-full space-y-2">
+          <div className="w-full space-y-2 px-4">
             <div className="text-sm font-medium">Zoom</div>
             <Slider
               value={[zoom]}
@@ -143,7 +156,7 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
             />
           </div>
 
-          <div className="flex justify-end gap-2 w-full">
+          <div className="flex justify-end gap-2 w-full px-4">
             <Button variant="outline" onClick={onCancel}>
               Cancel
             </Button>
