@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { User, Mail, UserPlus } from "lucide-react";
+import { User, Mail, UserPlus, Briefcase } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ type SearchResult = {
   lastName: string;
   email?: string;
   profilePictureUrl?: string;
+  jobTitle?: string;
 };
 
 export function UserSearch() {
@@ -99,15 +100,21 @@ export function UserSearch() {
                     <div className="font-medium">
                       {user.firstName} {user.lastName}
                     </div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <span className="flex items-center gap-1">
+                    <div className="text-sm text-muted-foreground flex flex-col gap-1">
+                      <span className="flex items-center gap-1 text-xs">
                         <User className="h-3 w-3" />
                         {user.username}
                       </span>
                       {user.email && (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 text-xs">
                           <Mail className="h-3 w-3" />
                           {user.email}
+                        </span>
+                      )}
+                      {user.jobTitle && (
+                        <span className="flex items-center gap-1 text-xs">
+                          <Briefcase className="h-3 w-3" />
+                          {user.jobTitle}
                         </span>
                       )}
                     </div>
