@@ -128,7 +128,6 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
                 minWidth={cropSize}
                 minHeight={cropSize}
                 ruleOfThirds
-                renderSelectionAddon={() => null}
               >
                 <img
                   ref={imageRef}
@@ -142,7 +141,6 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
                     cursor: 'move'
                   }}
                   className="h-[400px] w-auto"
-                  draggable="true"
                 />
               </ReactCrop>
             )}
