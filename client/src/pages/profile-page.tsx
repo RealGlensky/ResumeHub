@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -65,6 +66,39 @@ export default function ProfilePage() {
     },
   });
 
+  const updateProfilePictureMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('profilePicture', file);
+      const res = await fetch('/api/user/profile-picture', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Failed to update profile picture');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Profile picture updated",
+        description: "Your profile picture has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      updateProfilePictureMutation.mutate(file);
+    }
+  };
+
   const onSubmit = (data: ProfileFormData) => {
     updateProfileMutation.mutate(data);
   };
@@ -78,6 +112,39 @@ export default function ProfilePage() {
           <CardTitle>Profile Settings</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-col items-center mb-6">
+            <div className="relative">
+              <Avatar className="h-24 w-24">
+                {user.profilePictureUrl ? (
+                  <AvatarImage src={user.profilePictureUrl} alt={user.username} />
+                ) : (
+                  <AvatarFallback>
+                    {user.firstName[0]}
+                    {user.lastName[0]}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <label
+                htmlFor="profile-picture"
+                className="absolute bottom-0 right-0 bg-primary hover:bg-primary/90 text-primary-foreground p-2 rounded-full cursor-pointer"
+              >
+                <Upload className="h-4 w-4" />
+                <input
+                  type="file"
+                  id="profile-picture"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfilePictureChange}
+                  disabled={updateProfilePictureMutation.isPending}
+                />
+              </label>
+            </div>
+            {updateProfilePictureMutation.isPending && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                Uploading...
+              </div>
+            )}
+          </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

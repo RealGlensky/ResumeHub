@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   city: text("city"),
   state: text("state"),
   country: text("country"),
+  profilePictureUrl: text("profile_picture_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

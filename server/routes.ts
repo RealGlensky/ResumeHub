@@ -10,6 +10,35 @@ import path from "path";
 import fs from "fs";
 import express from "express";
 
+// Configure multer for handling image uploads
+const imageStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(process.cwd(), 'uploads', 'profile-pictures');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const imageUpload = multer({
+  storage: imageStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return cb(new Error('Only JPG, PNG and GIF files are allowed'));
+    }
+    cb(null, true);
+  }
+});
+
 // Configure multer for handling file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -272,6 +301,33 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: "Failed to update profile" });
     }
   });
+
+  // Update the profile endpoint to handle profile picture updates
+  app.post("/api/user/profile-picture", imageUpload.single('profilePicture'), async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    try {
+      const fileUrl = `/uploads/profile-pictures/${req.file.filename}`;
+
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          profilePictureUrl: fileUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      // Update the session with new user data
+      req.user = updatedUser;
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile picture:", error);
+      res.status(500).json({ error: 'Failed to update profile picture' });
+    }
+  });
+
 
   // Job offer routes
   app.post("/api/resumes/:id/offers", async (req, res) => {
