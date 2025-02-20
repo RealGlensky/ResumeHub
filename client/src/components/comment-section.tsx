@@ -96,7 +96,7 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
               {comment.profilePictureUrl ? (
                 <AvatarImage src={comment.profilePictureUrl} alt={displayName} />
               ) : (
-                <AvatarFallback>
+                <AvatarFallback className="bg-primary text-primary-foreground">
                   {displayName[0].toUpperCase()}
                 </AvatarFallback>
               )}
