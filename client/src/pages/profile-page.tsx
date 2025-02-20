@@ -12,6 +12,8 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload } from "lucide-react";
+import { useState } from "react";
+import { ImageCropper } from "@/components/image-cropper";
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -30,6 +32,8 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -67,9 +71,12 @@ export default function ProfilePage() {
   });
 
   const updateProfilePictureMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (file: Blob) => {
       const formData = new FormData();
-      formData.append('profilePicture', file);
+      // Convert blob to file with original file extension
+      const fileExtension = selectedFile?.name.split('.').pop() || 'jpg';
+      const newFile = new File([file], `cropped.${fileExtension}`, { type: `image/${fileExtension}` });
+      formData.append('profilePicture', newFile);
       const res = await fetch('/api/user/profile-picture', {
         method: 'POST',
         body: formData,
@@ -82,6 +89,8 @@ export default function ProfilePage() {
         title: "Profile picture updated",
         description: "Your profile picture has been updated successfully.",
       });
+      setCropperOpen(false);
+      setSelectedFile(null);
     },
     onError: (error: Error) => {
       toast({
@@ -95,8 +104,18 @@ export default function ProfilePage() {
   const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      updateProfilePictureMutation.mutate(file);
+      setSelectedFile(file);
+      setCropperOpen(true);
     }
+  };
+
+  const handleCropComplete = (croppedBlob: Blob) => {
+    updateProfilePictureMutation.mutate(croppedBlob);
+  };
+
+  const handleCropCancel = () => {
+    setCropperOpen(false);
+    setSelectedFile(null);
   };
 
   const onSubmit = (data: ProfileFormData) => {
@@ -145,6 +164,16 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+
+          {selectedFile && (
+            <ImageCropper
+              file={selectedFile}
+              onCropComplete={handleCropComplete}
+              onCancel={handleCropCancel}
+              open={cropperOpen}
+            />
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
