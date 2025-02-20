@@ -28,7 +28,7 @@ const imageStorage = multer.diskStorage({
 const imageUpload = multer({
   storage: imageStorage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 10 * 1024 * 1024 // Increased to 10MB limit
   },
   fileFilter: function (req, file, cb) {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
@@ -304,17 +304,24 @@ export function registerRoutes(app: Express): Server {
 
   // Update the profile endpoint to handle profile picture updates
   app.post("/api/user/profile-picture", imageUpload.single('profilePicture'), async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-
     try {
+      if (!req.isAuthenticated()) return res.sendStatus(401);
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
       const fileUrl = `/uploads/profile-pictures/${req.file.filename}`;
+
+      // Delete old profile picture if it exists
+      if (req.user.profilePictureUrl) {
+        const oldFilePath = path.join(process.cwd(), req.user.profilePictureUrl.substring(1));
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
 
       const [updatedUser] = await db
         .update(users)
         .set({
           profilePictureUrl: fileUrl,
-          updatedAt: new Date(),
         })
         .where(eq(users.id, req.user.id))
         .returning();
@@ -324,6 +331,12 @@ export function registerRoutes(app: Express): Server {
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating profile picture:", error);
+      if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'File is too large. Maximum size is 10MB.' });
+        }
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: 'Failed to update profile picture' });
     }
   });
