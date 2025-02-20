@@ -28,7 +28,7 @@ const imageStorage = multer.diskStorage({
 const imageUpload = multer({
   storage: imageStorage,
   limits: {
-    fileSize: 10 * 1024 * 1024 // Increased to 10MB limit
+    fileSize: 20 * 1024 * 1024 // Increased to 20MB limit
   },
   fileFilter: function (req, file, cb) {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
@@ -333,7 +333,7 @@ export function registerRoutes(app: Express): Server {
       console.error("Error updating profile picture:", error);
       if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ error: 'File is too large. Maximum size is 10MB.' });
+          return res.status(400).json({ error: 'File is too large. Maximum size is 20MB.' }); // Updated error message
         }
         return res.status(400).json({ error: error.message });
       }
