@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,10 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
   const [imageSrc, setImageSrc] = useState<string>('');
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
+  const currentPosition = useRef({ x: 0, y: 0 });
   const imageRef = useRef<HTMLImageElement>(null);
+  const rafRef = useRef<number>();
 
   // Load the image when the file changes
   useEffect(() => {
@@ -56,8 +58,27 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
     }
   }, [imageSrc, cropSize]);
 
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
+
+  const updatePosition = useCallback((clientX: number, clientY: number) => {
+    const newX = clientX - dragStart.current.x;
+    const newY = clientY - dragStart.current.y;
+
+    currentPosition.current = { x: newX, y: newY };
+
+    rafRef.current = requestAnimationFrame(() => {
+      setPosition(currentPosition.current);
+    });
+  }, []);
+
   const handleMouseDown = (e: React.MouseEvent<HTMLImageElement>) => {
-    // Only start dragging if clicking outside the crop area
     const rect = imageRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -71,20 +92,25 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
 
     if (!isCropArea) {
       setIsDragging(true);
-      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+      dragStart.current = {
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+      };
+      currentPosition.current = position;
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
     if (isDragging) {
-      const newX = e.clientX - dragStart.x;
-      const newY = e.clientY - dragStart.y;
-      setPosition({ x: newX, y: newY });
+      updatePosition(e.clientX, e.clientY);
     }
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+    }
   };
 
   const getCroppedImg = async () => {
@@ -181,12 +207,13 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
                   style={{ 
-                    transform: `scale(${zoom}) translate(${position.x}px, ${position.y}px)`,
+                    transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${zoom})`,
                     transformOrigin: 'center',
                     width: 'auto',
                     height: '100%',
                     objectFit: 'contain',
-                    cursor: isDragging ? 'grabbing' : 'grab'
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                    willChange: 'transform',
                   }}
                 />
               </ReactCrop>
