@@ -21,7 +21,8 @@ export default function NetworkResumesPage() {
 
   const { data: networkResumes = [] } = useQuery<NetworkResume[]>({ 
     queryKey: ["/api/network/resumes"],
-    enabled: !!user
+    enabled: !!user,
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   const sortedResumes = useMemo(() => {
@@ -29,8 +30,8 @@ export default function NetworkResumesPage() {
       switch (activeSort.type) {
         case 'date':
           return activeSort.order === 'desc'
-            ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            ? new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
+            : new Date(a.createdAt || '').getTime() - new Date(b.createdAt || '').getTime();
         case 'user':
           return activeSort.order === 'desc'
             ? b.owner.username.localeCompare(a.owner.username)

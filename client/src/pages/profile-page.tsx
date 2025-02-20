@@ -8,7 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query"; // Added useQueryClient
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Upload } from "lucide-react";
@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [cropperOpen, setCropperOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const queryClient = useQueryClient(); // Added queryClient
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -73,7 +74,6 @@ export default function ProfilePage() {
   const updateProfilePictureMutation = useMutation({
     mutationFn: async (file: Blob) => {
       const formData = new FormData();
-      // Convert blob to file with original file extension
       const fileExtension = selectedFile?.name.split('.').pop() || 'jpg';
       const newFile = new File([file], `cropped.${fileExtension}`, { type: `image/${fileExtension}` });
       formData.append('profilePicture', newFile);
@@ -89,6 +89,8 @@ export default function ProfilePage() {
         title: "Profile picture updated",
         description: "Your profile picture has been updated successfully.",
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/connections"] });
       setCropperOpen(false);
       setSelectedFile(null);
     },

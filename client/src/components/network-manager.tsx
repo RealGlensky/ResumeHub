@@ -52,10 +52,12 @@ export function NetworkManager() {
 
   const { data: invitations = [] } = useQuery<NetworkInvitation[]>({
     queryKey: ["/api/network/invitations"],
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   const { data: connections = [] } = useQuery<NetworkConnection[]>({
     queryKey: ["/api/network/connections"],
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   const handleInvitation = useMutation({
@@ -63,7 +65,6 @@ export function NetworkManager() {
       return apiRequest("POST", `/api/network/invitations/${id}/${action}`);
     },
     onSuccess: (_, variables) => {
-      // Show success message
       toast({
         title: `Invitation ${variables.action}ed`,
         description: `You have successfully ${variables.action}ed the connection request.`,
@@ -72,6 +73,8 @@ export function NetworkManager() {
       // Invalidate both invitations and connections queries to refresh the lists
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/connections"] });
+      // Also invalidate network resumes as they might change based on connections
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
     },
     onError: (error) => {
       toast({
@@ -91,6 +94,7 @@ export function NetworkManager() {
         title: "Invitation Sent",
         description: "Your connection request has been sent successfully.",
       });
+      // Invalidate invitations to show the newly sent invitation
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
       setSearchQuery("");
     },
