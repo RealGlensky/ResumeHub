@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { User, Mail, UserPlus, Briefcase } from "lucide-react";
+import { User, Mail, UserPlus, Briefcase, MapPin } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,9 @@ type SearchResult = {
   email?: string;
   profilePictureUrl?: string;
   jobTitle?: string;
+  city?: string;
+  state?: string;
+  country?: string;
 };
 
 export function UserSearch() {
@@ -115,6 +118,12 @@ export function UserSearch() {
                         <span className="flex items-center gap-1 text-xs">
                           <Briefcase className="h-3 w-3" />
                           {user.jobTitle}
+                        </span>
+                      )}
+                      {(user.city || user.state || user.country) && (
+                        <span className="flex items-center gap-1 text-xs">
+                          <MapPin className="h-3 w-3" />
+                          {[user.city, user.state, user.country].filter(Boolean).join(", ")}
                         </span>
                       )}
                     </div>
