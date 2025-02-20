@@ -37,10 +37,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Clear all existing queries first
+      queryClient.clear();
+      // Set the user data
       queryClient.setQueryData(["/api/user"], user);
-      // Invalidate all resume-related queries to trigger a refetch
+      // Invalidate all queries to trigger refetch with new user
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/connections"] });
     },
     onError: (error: Error) => {
       toast({
@@ -57,10 +62,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      // Clear all existing queries first
+      queryClient.clear();
+      // Set the user data
       queryClient.setQueryData(["/api/user"], user);
-      // Also invalidate queries after registration
+      // Invalidate all queries to trigger refetch with new user
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/connections"] });
     },
     onError: (error: Error) => {
       toast({
@@ -76,12 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      // Clear all queries from cache
+      queryClient.clear();
+      // Set user to null
       queryClient.setQueryData(["/api/user"], null);
-      // Clear all resume-related queries from cache on logout
-      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
-      queryClient.removeQueries({ queryKey: ["/api/resumes"] });
-      queryClient.removeQueries({ queryKey: ["/api/network/resumes"] });
     },
     onError: (error: Error) => {
       toast({
