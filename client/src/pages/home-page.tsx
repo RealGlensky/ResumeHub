@@ -8,7 +8,10 @@ import type { Resume } from "@db/schema";
 
 export default function HomePage() {
   const { user } = useAuth();
-  const { data: resumes = [] } = useQuery<Resume[]>({ queryKey: ["/api/resumes"] });
+  const { data: resumes = [] } = useQuery<Resume[]>({ 
+    queryKey: ["/api/resumes"],
+    enabled: !!user, // Only fetch when user is logged in
+  });
 
   return (
     <main className="container mx-auto px-4 py-8">

@@ -188,6 +188,7 @@ export function CommentSection({ resumeId, resumeUserId }: { resumeId: string; r
 
   const { data: comments = [] } = useQuery<ThreadedComment[]>({
     queryKey: [`/api/resumes/${resumeId}/comments`],
+    enabled: !!user, // Only fetch when user is logged in
   });
 
   const isResumeOwner = user?.id === resumeUserId;
@@ -202,7 +203,10 @@ export function CommentSection({ resumeId, resumeUserId }: { resumeId: string; r
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate both the specific resume's comments and the resume itself
       queryClient.invalidateQueries({ queryKey: [`/api/resumes/${resumeId}/comments`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
     },
   });
 
@@ -216,7 +220,10 @@ export function CommentSection({ resumeId, resumeUserId }: { resumeId: string; r
       return res.json();
     },
     onSuccess: () => {
+      // Invalidate both the specific resume's comments and the resume itself
       queryClient.invalidateQueries({ queryKey: [`/api/resumes/${resumeId}/comments`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
     },
   });
 
