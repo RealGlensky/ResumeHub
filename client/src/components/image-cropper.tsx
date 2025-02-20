@@ -126,11 +126,10 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
               <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => {
-                  // Ensure the crop remains circular and fixed size
                   setCrop(prev => ({
                     ...prev,
-                    x: percentCrop.x,
-                    y: percentCrop.y,
+                    x: prev.x + (percentCrop.x - prev.x),
+                    y: prev.y + (percentCrop.y - prev.y),
                   }));
                 }}
                 aspect={1}
