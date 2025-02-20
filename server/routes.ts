@@ -25,17 +25,19 @@ const imageStorage = multer.diskStorage({
   }
 });
 
+// Update the multer configuration for profile pictures
 const imageUpload = multer({
   storage: imageStorage,
   limits: {
     fileSize: 20 * 1024 * 1024 // Increased to 20MB limit
   },
   fileFilter: function (req, file, cb) {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (!allowedTypes.includes(file.mimetype)) {
-      return cb(new Error('Only JPG, PNG and GIF files are allowed'));
+    // More permissive mime type checking
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
     }
-    cb(null, true);
   }
 });
 

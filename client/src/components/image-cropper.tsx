@@ -154,14 +154,18 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
 
     ctx.restore();
 
+    // Preserve the original file type
+    const mimeType = file.type || 'image/jpeg';
     return new Promise<Blob>((resolve) => {
       canvas.toBlob(
         (blob) => {
           if (blob) {
-            resolve(blob);
+            // Create a new blob with the correct mime type
+            const croppedBlob = new Blob([blob], { type: mimeType });
+            resolve(croppedBlob);
           }
         },
-        'image/jpeg',
+        mimeType,
         0.95
       );
     });
