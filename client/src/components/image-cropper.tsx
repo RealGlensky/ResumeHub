@@ -121,7 +121,7 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
           <DialogTitle>Adjust Profile Picture</DialogTitle>
         </DialogHeader>
         <div className="mt-4 flex flex-col items-center space-y-4">
-          <div className="relative w-full aspect-square bg-muted">
+          <div className="relative w-full h-[400px] bg-muted overflow-hidden">
             {imageSrc && (
               <ReactCrop
                 crop={crop}
@@ -146,7 +146,7 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
                   style={{ 
                     transform: `scale(${zoom})`,
                     transformOrigin: 'center',
-                    width: '100%',
+                    width: 'auto',
                     height: '100%',
                     objectFit: 'contain',
                     cursor: 'move'
