@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { resumes, jobOffers, comments, networkInvitations, networkConnections, users } from "@db/schema";
-import { eq, and, or, desc, inArray, not } from "drizzle-orm";
+import { eq, and, or, desc, inArray, not, ilike } from "drizzle-orm";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
@@ -663,17 +663,37 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).json({ error: "Search query is required" });
     }
 
-    // Search for users by username, excluding the current user
+    // Search for users by username, email, or name, excluding the current user
     const searchResults = await db
       .select({
         id: users.id,
         username: users.username,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profilePictureUrl: users.profilePictureUrl,
       })
       .from(users)
-      .where(eq(users.username, query))
+      .where(
+        or(
+          ilike(users.username, `%${query}%`),
+          ilike(users.email, `%${query}%`),
+          ilike(users.firstName, `%${query}%`),
+          ilike(users.lastName, `%${query}%`)
+        )
+      )
       .limit(10);
 
-    res.json(searchResults.filter(user => user.id !== req.user.id));
+    // Filter out sensitive information and current user
+    const filteredResults = searchResults
+      .filter(user => user.id !== req.user.id)
+      .map(({ email, ...user }) => ({
+        ...user,
+        // Only include email if it exactly matches the search query
+        email: email.toLowerCase() === query.toLowerCase() ? email : undefined
+      }));
+
+    res.json(filteredResults);
   });
 
   // Add new route for network resumes
