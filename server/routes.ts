@@ -655,6 +655,7 @@ export function registerRoutes(app: Express): Server {
     res.json(connections);
   });
 
+  // Update the user search endpoint to include jobTitle
   app.get("/api/users/search", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -672,6 +673,7 @@ export function registerRoutes(app: Express): Server {
         firstName: users.firstName,
         lastName: users.lastName,
         profilePictureUrl: users.profilePictureUrl,
+        jobTitle: users.jobTitle,
       })
       .from(users)
       .where(
