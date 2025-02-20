@@ -28,6 +28,9 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
   });
   const [zoom, setZoom] = useState<number>(1);
   const [imageSrc, setImageSrc] = useState<string>('');
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLImageElement>(null);
 
   // Load the image when the file changes
@@ -52,6 +55,37 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
       }));
     }
   }, [imageSrc, cropSize]);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLImageElement>) => {
+    // Only start dragging if clicking outside the crop area
+    const rect = imageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const isCropArea = (
+      x >= crop.x && x <= crop.x + crop.width &&
+      y >= crop.y && y <= crop.y + crop.height
+    );
+
+    if (!isCropArea) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (isDragging) {
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
+      setPosition({ x: newX, y: newY });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
 
   const getCroppedImg = async () => {
     if (!imageRef.current) return;
@@ -142,13 +176,17 @@ export function ImageCropper({ file, onCropComplete, onCancel, open }: ImageCrop
                   ref={imageRef}
                   src={imageSrc}
                   alt="Crop preview"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
                   style={{ 
-                    transform: `scale(${zoom})`,
+                    transform: `scale(${zoom}) translate(${position.x}px, ${position.y}px)`,
                     transformOrigin: 'center',
                     width: 'auto',
                     height: '100%',
                     objectFit: 'contain',
-                    cursor: 'move'
+                    cursor: isDragging ? 'grabbing' : 'grab'
                   }}
                 />
               </ReactCrop>
