@@ -25,7 +25,7 @@ export function NavigationBar() {
     <header className="border-b bg-background">
       <div className="container flex h-14 items-center">
         <Link href="/" className="mr-6 flex items-center space-x-2">
-          <span className="font-bold">ResumeNetwork</span>
+          <span className="font-bold">ResumeBook</span>
         </Link>
         <NavigationMenu className="flex-1">
           <NavigationMenuList>
