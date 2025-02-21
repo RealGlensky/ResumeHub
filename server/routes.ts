@@ -889,25 +889,15 @@ export function registerRoutes(app: Express): Server {
           )
         );
 
-      // Delete all comments where either user commented on the other's resumes
+      // Delete all comments made by either user on the other's resumes
       await db
         .delete(comments)
         .where(
-          and(
-            inArray(
-              comments.resumeId,
-              userResumes.map(resume => resume.id)
-            ),
-            or(
-              and(
-                eq(comments.userId, req.user.id),
-                eq(resumes.userId, otherUserId)
-              ),
-              and(
-                eq(comments.userId, otherUserId),
-                eq(resumes.userId, req.user.id)
-              )
-            )
+          inArray(
+            comments.resumeId,
+            userResumes
+              .filter(resume => resume.userId === otherUserId)
+              .map(resume => resume.id)
           )
         );
 
