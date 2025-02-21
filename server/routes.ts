@@ -651,6 +651,7 @@ export function registerRoutes(app: Express): Server {
     res.json(updatedInvitation);
   });
 
+  // Update the network connections endpoint to include all user fields
   app.get("/api/network/connections", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -662,6 +663,14 @@ export function registerRoutes(app: Express): Server {
         connectedUser: {
           id: users.id,
           username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          profilePictureUrl: users.profilePictureUrl,
+          jobTitle: users.jobTitle,
+          city: users.city,
+          state: users.state,
+          country: users.country,
         },
       })
       .from(networkConnections)
