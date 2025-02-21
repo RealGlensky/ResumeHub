@@ -47,6 +47,7 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 
 function PasswordChangeForm() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const form = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
   });
@@ -60,6 +61,10 @@ function PasswordChangeForm() {
       return res.json();
     },
     onSuccess: () => {
+      // Clear auth cache after password change
+      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+
       toast({
         title: "Password updated",
         description: "Your password has been updated successfully.",
@@ -149,6 +154,7 @@ function PasswordChangeForm() {
     </Card>
   );
 }
+
 
 
 export default function ProfilePage() {
