@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
-import { Check, X } from "lucide-react";
+import { Check, X, User, Mail, Briefcase, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type NetworkInvitation = {
   id: number;
@@ -28,6 +29,14 @@ type NetworkConnection = {
   connectedUser: {
     id: number;
     username: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    profilePictureUrl?: string;
+    jobTitle?: string;
+    city?: string;
+    state?: string;
+    country?: string;
   };
 };
 
@@ -180,9 +189,56 @@ export function NetworkManager() {
                   key={connection.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
-                  <div>
-                    <p className="font-medium">{connection.connectedUser.username}</p>
-                    <p className="text-sm text-muted-foreground">Connected</p>
+                  <div className="flex items-center space-x-4">
+                    <Avatar className="h-10 w-10">
+                      {connection.connectedUser.profilePictureUrl ? (
+                        <AvatarImage
+                          src={connection.connectedUser.profilePictureUrl}
+                          alt={connection.connectedUser.username}
+                          className="aspect-square h-full w-full"
+                        />
+                      ) : (
+                        <AvatarFallback>
+                          {connection.connectedUser.firstName[0]}
+                          {connection.connectedUser.lastName[0]}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">
+                        {connection.connectedUser.firstName} {connection.connectedUser.lastName}
+                      </div>
+                      <div className="text-sm text-muted-foreground flex flex-col gap-1">
+                        <span className="flex items-center gap-1 text-xs">
+                          <User className="h-3 w-3" />
+                          {connection.connectedUser.username}
+                        </span>
+                        {connection.connectedUser.email && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <Mail className="h-3 w-3" />
+                            {connection.connectedUser.email}
+                          </span>
+                        )}
+                        {connection.connectedUser.jobTitle && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <Briefcase className="h-3 w-3" />
+                            {connection.connectedUser.jobTitle}
+                          </span>
+                        )}
+                        {(connection.connectedUser.city ||
+                          connection.connectedUser.state ||
+                          connection.connectedUser.country) && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <MapPin className="h-3 w-3" />
+                            {[
+                              connection.connectedUser.city,
+                              connection.connectedUser.state,
+                              connection.connectedUser.country
+                            ].filter(Boolean).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
