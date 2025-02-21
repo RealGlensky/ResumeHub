@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { resumes, jobOffers, comments, networkInvitations, networkConnections, users } from "@db/schema";
-import { eq, and, or, desc, inArray, not, ilike } from "drizzle-orm";
+import { eq, and, or, desc, inArray, not, ilike, exists } from "drizzle-orm";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
@@ -889,14 +889,13 @@ export function registerRoutes(app: Express): Server {
           )
         );
 
-      // Delete all comments where:
-      // 1. Comments made by otherUser on currentUser's resumes
-      // 2. Comments made by currentUser on otherUser's resumes
+      // Delete comments in two steps to avoid recursion issues
+      // Step 1: Delete all direct comments between the two users
       await db
         .delete(comments)
         .where(
           or(
-            // Case 1: Comments made by otherUser on currentUser's resumes
+            // Comments made by otherUser on currentUser's resumes
             and(
               eq(comments.userId, otherUserId),
               inArray(
@@ -906,7 +905,7 @@ export function registerRoutes(app: Express): Server {
                   .map(resume => resume.id)
               )
             ),
-            // Case 2: Comments made by currentUser on otherUser's resumes
+            // Comments made by currentUser on otherUser's resumes
             and(
               eq(comments.userId, req.user.id),
               inArray(
@@ -915,17 +914,24 @@ export function registerRoutes(app: Express): Server {
                   .filter(resume => resume.userId === otherUserId)
                   .map(resume => resume.id)
               )
-            ),
-            // Case 3: Any replies to the above comments
-            inArray(
-              comments.parentId,
-              userResumes.flatMap(resume => {
-                if (resume.userId === req.user.id) {
-                  return db.select(comments.id).from(comments).where(and(eq(comments.userId, otherUserId), eq(comments.resumeId, resume.id))).then(result => result.map(c => c.id));
-                } else {
-                  return db.select(comments.id).from(comments).where(and(eq(comments.userId, req.user.id), eq(comments.resumeId, resume.id))).then(result => result.map(c => c.id));
-                }
-              })            )
+            )
+          )
+        );
+
+      // Step 2: Delete orphaned replies
+      await db
+        .delete(comments)
+        .where(
+          and(
+            not(eq(comments.parentId, null)),
+            not(
+              exists(
+                db
+                  .select()
+                  .from(comments)
+                  .where(eq(comments.id, comments.parentId))
+              )
+            )
           )
         );
 
