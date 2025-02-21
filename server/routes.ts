@@ -590,7 +590,11 @@ export function registerRoutes(app: Express): Server {
           receiver.job_title as "receiver.jobTitle",
           receiver.city as "receiver.city",
           receiver.state as "receiver.state",
-          receiver.country as "receiver.country"
+          receiver.country as "receiver.country",
+          CASE 
+            WHEN ni.sender_id = ${req.user.id} THEN 'sent'
+            WHEN ni.receiver_id = ${req.user.id} THEN 'received'
+          END as type
         FROM network_invitations ni
         LEFT JOIN users sender ON ni.sender_id = sender.id
         LEFT JOIN users receiver ON ni.receiver_id = receiver.id
@@ -605,6 +609,7 @@ export function registerRoutes(app: Express): Server {
         createdAt: row.createdAt,
         senderId: row.senderId,
         receiverId: row.receiverId,
+        type: row.type,
         sender: {
           id: row["sender.id"],
           username: row["sender.username"],
@@ -628,8 +633,7 @@ export function registerRoutes(app: Express): Server {
           city: row["receiver.city"],
           state: row["receiver.state"],
           country: row["receiver.country"],
-        },
-        type: row.senderId === req.user.id ? 'sent' : 'received'
+        }
       }));
 
       res.json(transformedInvitations);
@@ -945,7 +949,7 @@ export function registerRoutes(app: Express): Server {
         .delete(networkConnections)
         .where(eq(networkConnections.id, parseInt(req.params.id)));
 
-      res.sendStatus(200);
+            res.sendStatus(200);
     } catch (error) {
       console.error('Error removing connection:', error);
       res.status(500).json({ error: 'Failed to remove connection' });

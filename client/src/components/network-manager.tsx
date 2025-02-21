@@ -62,11 +62,13 @@ export function NetworkManager() {
   const { data: invitations = [] } = useQuery<NetworkInvitation[]>({
     queryKey: ["/api/network/invitations"],
     refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnMount: true, // Add this to ensure fresh data on mount
   });
 
   const { data: connections = [] } = useQuery<NetworkConnection[]>({
     queryKey: ["/api/network/connections"],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
+    refetchOnMount: true,
   });
 
   const handleInvitation = useMutation({
