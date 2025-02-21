@@ -199,8 +199,8 @@ export function NetworkManager() {
                         />
                       ) : (
                         <AvatarFallback>
-                          {connection.connectedUser.firstName[0]}
-                          {connection.connectedUser.lastName[0]}
+                          {connection.connectedUser.firstName?.charAt(0)}
+                          {connection.connectedUser.lastName?.charAt(0)}
                         </AvatarFallback>
                       )}
                     </Avatar>
