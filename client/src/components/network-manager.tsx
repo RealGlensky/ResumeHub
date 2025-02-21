@@ -28,6 +28,14 @@ type NetworkInvitation = {
   receiver: {
     id: number;
     username: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    profilePictureUrl?: string;
+    jobTitle?: string;
+    city?: string;
+    state?: string;
+    country?: string;
   };
 };
 
@@ -210,13 +218,59 @@ export function NetworkManager() {
                   key={invitation.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
-                  <div>
-                    <p className="font-medium">
-                      Invitation sent to {invitation.receiver.username}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Pending response
-                    </p>
+                  <div className="flex items-center space-x-4">
+                    <Avatar className="h-10 w-10">
+                      {invitation.receiver.profilePictureUrl ? (
+                        <AvatarImage
+                          src={invitation.receiver.profilePictureUrl}
+                          alt={invitation.receiver.username}
+                          className="aspect-square h-full w-full"
+                        />
+                      ) : (
+                        <AvatarFallback>
+                          {invitation.receiver.firstName?.charAt(0)}
+                          {invitation.receiver.lastName?.charAt(0)}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">
+                        {invitation.receiver.firstName} {invitation.receiver.lastName}
+                      </div>
+                      <div className="text-sm text-muted-foreground flex flex-col gap-1">
+                        <span className="flex items-center gap-1 text-xs">
+                          <User className="h-3 w-3" />
+                          {invitation.receiver.username}
+                        </span>
+                        {invitation.receiver.email && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <Mail className="h-3 w-3" />
+                            {invitation.receiver.email}
+                          </span>
+                        )}
+                        {invitation.receiver.jobTitle && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <Briefcase className="h-3 w-3" />
+                            {invitation.receiver.jobTitle}
+                          </span>
+                        )}
+                        {(invitation.receiver.city ||
+                          invitation.receiver.state ||
+                          invitation.receiver.country) && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <MapPin className="h-3 w-3" />
+                            {[
+                              invitation.receiver.city,
+                              invitation.receiver.state,
+                              invitation.receiver.country
+                            ].filter(Boolean).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Pending response
                   </div>
                 </div>
               ))}
