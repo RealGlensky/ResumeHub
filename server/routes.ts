@@ -664,24 +664,29 @@ export function registerRoutes(app: Express): Server {
       return res.status(404).json({ error: 'Invitation not found' });
     }
 
-    if (action === 'accept') {
-      // Create network connection
-      await db
-        .insert(networkConnections)
-        .values({
-          userId1: invitation.senderId,
-          userId2: invitation.receiverId,
-        });
+    try {
+      if (action === 'accept') {
+        // Create network connection
+        await db
+          .insert(networkConnections)
+          .values({
+            userId1: invitation.senderId,
+            userId2: invitation.receiverId,
+          });
+      }
+
+      // Update invitation status
+      const [updatedInvitation] = await db
+        .update(networkInvitations)
+        .set({ status: action === 'accept' ? 'accepted' : 'rejected' })
+        .where(eq(networkInvitations.id, invitation.id))
+        .returning();
+
+      res.json(updatedInvitation);
+    } catch (error) {
+      console.error('Error processing invitation:', error);
+      res.status(500).json({ error: 'Failed to process invitation' });
     }
-
-    // Update invitation status
-    const [updatedInvitation] = await db
-      .update(networkInvitations)
-      .set({ status: action === 'accept' ? 'accepted' : 'rejected' })
-      .where(eq(networkInvitations.id, invitation.id))
-      .returning();
-
-    res.json(updatedInvitation);
   });
 
   // Update the network connections endpoint to include all user fields

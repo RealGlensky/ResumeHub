@@ -102,6 +102,7 @@ export function NetworkManager() {
       // Invalidate both connections and network resumes queries
       queryClient.invalidateQueries({ queryKey: ["/api/network/connections"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
       toast({
         title: "Connection removed",
         description: "The user has been removed from your network.",
