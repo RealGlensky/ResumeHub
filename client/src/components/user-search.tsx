@@ -22,6 +22,13 @@ type SearchResult = {
   country?: string;
 };
 
+type NetworkConnection = {
+  id: number;
+  connectedUser: {
+    id: number;
+  };
+};
+
 export function UserSearch() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
@@ -35,6 +42,11 @@ export function UserSearch() {
       return res.json();
     },
     enabled: searchQuery.length > 0,
+  });
+
+  // Fetch current connections
+  const { data: connections = [] } = useQuery<NetworkConnection[]>({
+    queryKey: ["/api/network/connections"],
   });
 
   const inviteMutation = useMutation({
@@ -57,6 +69,11 @@ export function UserSearch() {
       });
     },
   });
+
+  // Helper function to check if a user is already connected
+  const isConnected = (userId: number) => {
+    return connections.some(conn => conn.connectedUser.id === userId);
+  };
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -133,10 +150,10 @@ export function UserSearch() {
                   variant="outline"
                   size="sm"
                   onClick={() => inviteMutation.mutate(user.id)}
-                  disabled={inviteMutation.isPending}
+                  disabled={inviteMutation.isPending || isConnected(user.id)}
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Connect
+                  {isConnected(user.id) ? "Connected" : "Connect"}
                 </Button>
               </div>
             </CardContent>
