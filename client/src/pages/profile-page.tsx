@@ -48,6 +48,7 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 function PasswordChangeForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { logoutMutation } = useAuth();
   const form = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
   });
@@ -67,8 +68,12 @@ function PasswordChangeForm() {
 
       toast({
         title: "Password updated",
-        description: "Your password has been updated successfully.",
+        description: "Your password has been updated successfully. Please log in again with your new password.",
       });
+
+      // Log out the user
+      logoutMutation.mutate();
+
       form.reset();
     },
     onError: (error: Error) => {
@@ -140,10 +145,10 @@ function PasswordChangeForm() {
             />
             <Button
               type="submit"
-              disabled={updatePasswordMutation.isPending}
+              disabled={updatePasswordMutation.isPending || logoutMutation.isPending}
               className="w-full"
             >
-              {updatePasswordMutation.isPending && (
+              {(updatePasswordMutation.isPending || logoutMutation.isPending) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               Change Password
@@ -154,7 +159,6 @@ function PasswordChangeForm() {
     </Card>
   );
 }
-
 
 
 export default function ProfilePage() {
