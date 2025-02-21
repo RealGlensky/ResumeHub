@@ -643,6 +643,40 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add route for canceling/removing a sent invitation
+  app.delete("/api/network/invitations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      // Get the invitation and check if user is the sender
+      const [invitation] = await db
+        .select()
+        .from(networkInvitations)
+        .where(
+          and(
+            eq(networkInvitations.id, parseInt(req.params.id)),
+            eq(networkInvitations.senderId, req.user.id),
+            eq(networkInvitations.status, 'pending')
+          )
+        )
+        .limit(1);
+
+      if (!invitation) {
+        return res.status(404).json({ error: 'Invitation not found' });
+      }
+
+      // Delete the invitation
+      await db
+        .delete(networkInvitations)
+        .where(eq(networkInvitations.id, invitation.id));
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error canceling invitation:', error);
+      res.status(500).json({ error: 'Failed to cancel invitation' });
+    }
+  });
+
   app.post("/api/network/invitations/:id/:action", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -907,8 +941,7 @@ export function registerRoutes(app: Express): Server {
             // Comments made by otherUser on currentUser's resumes
             and(
               eq(comments.userId, otherUserId),
-              inArray(
-                comments.resumeId,
+              inArray(comments.resumeId,
                 userResumes
                   .filter(resume => resume.userId === req.user.id)
                   .map(resume => resume.id)

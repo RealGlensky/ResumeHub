@@ -61,8 +61,8 @@ export function NetworkManager() {
 
   const { data: invitations = [] } = useQuery<NetworkInvitation[]>({
     queryKey: ["/api/network/invitations"],
-    refetchInterval: 30000, // Refetch every 30 seconds
-    refetchOnMount: true, // Add this to ensure fresh data on mount
+    refetchInterval: 30000,
+    refetchOnMount: true,
   });
 
   const { data: connections = [] } = useQuery<NetworkConnection[]>({
@@ -80,11 +80,8 @@ export function NetworkManager() {
         title: `Invitation ${variables.action}ed`,
         description: `You have successfully ${variables.action}ed the connection request.`,
       });
-
-      // Invalidate both invitations and connections queries to refresh the lists
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/connections"] });
-      // Also invalidate network resumes as they might change based on connections
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
     },
     onError: (error) => {
@@ -96,12 +93,31 @@ export function NetworkManager() {
     },
   });
 
+  const cancelInvitation = useMutation({
+    mutationFn: async (invitationId: number) => {
+      return apiRequest("DELETE", `/api/network/invitations/${invitationId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Invitation canceled",
+        description: "The connection request has been canceled.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to cancel the invitation. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const removeConnection = useMutation({
     mutationFn: async (connectionId: number) => {
       return apiRequest("DELETE", `/api/network/connections/${connectionId}`);
     },
     onSuccess: () => {
-      // Invalidate both connections and network resumes queries
       queryClient.invalidateQueries({ queryKey: ["/api/network/connections"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
@@ -119,13 +135,11 @@ export function NetworkManager() {
     },
   });
 
-  // Split invitations into sent and received
   const receivedInvitations = invitations.filter(inv => inv.type === 'received' && inv.status === 'pending');
   const sentInvitations = invitations.filter(inv => inv.type === 'sent' && inv.status === 'pending');
 
   return (
     <div className="space-y-6">
-      {/* Received Invitations Section */}
       <Card>
         <CardHeader>
           <CardTitle>Received Invitations</CardTitle>
@@ -230,7 +244,6 @@ export function NetworkManager() {
         </CardContent>
       </Card>
 
-      {/* Sent Invitations Section */}
       {sentInvitations.length > 0 && (
         <Card>
           <CardHeader>
@@ -294,8 +307,17 @@ export function NetworkManager() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    Pending response
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700"
+                      onClick={() => cancelInvitation.mutate(invitation.id)}
+                      disabled={cancelInvitation.isPending}
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Cancel
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -304,7 +326,6 @@ export function NetworkManager() {
         </Card>
       )}
 
-      {/* Connections Section */}
       <Card>
         <CardHeader>
           <CardTitle>My Network</CardTitle>
