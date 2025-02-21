@@ -16,6 +16,14 @@ type NetworkInvitation = {
   sender: {
     id: number;
     username: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+    profilePictureUrl?: string;
+    jobTitle?: string;
+    city?: string;
+    state?: string;
+    country?: string;
   };
   receiver: {
     id: number;
@@ -99,13 +107,56 @@ export function NetworkManager() {
                   key={invitation.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
-                  <div>
-                    <p className="font-medium">
-                      {invitation.sender.username}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      wants to connect with you
-                    </p>
+                  <div className="flex items-center space-x-4">
+                    <Avatar className="h-10 w-10">
+                      {invitation.sender.profilePictureUrl ? (
+                        <AvatarImage
+                          src={invitation.sender.profilePictureUrl}
+                          alt={invitation.sender.username}
+                          className="aspect-square h-full w-full"
+                        />
+                      ) : (
+                        <AvatarFallback>
+                          {invitation.sender.firstName?.charAt(0)}
+                          {invitation.sender.lastName?.charAt(0)}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">
+                        {invitation.sender.firstName} {invitation.sender.lastName}
+                      </div>
+                      <div className="text-sm text-muted-foreground flex flex-col gap-1">
+                        <span className="flex items-center gap-1 text-xs">
+                          <User className="h-3 w-3" />
+                          {invitation.sender.username}
+                        </span>
+                        {invitation.sender.email && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <Mail className="h-3 w-3" />
+                            {invitation.sender.email}
+                          </span>
+                        )}
+                        {invitation.sender.jobTitle && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <Briefcase className="h-3 w-3" />
+                            {invitation.sender.jobTitle}
+                          </span>
+                        )}
+                        {(invitation.sender.city ||
+                          invitation.sender.state ||
+                          invitation.sender.country) && (
+                          <span className="flex items-center gap-1 text-xs">
+                            <MapPin className="h-3 w-3" />
+                            {[
+                              invitation.sender.city,
+                              invitation.sender.state,
+                              invitation.sender.country
+                            ].filter(Boolean).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button

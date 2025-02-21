@@ -564,7 +564,6 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
-      // Get both sent and received invitations with proper joins
       const result = await db.execute(
         `SELECT 
           ni.id,
@@ -574,8 +573,24 @@ export function registerRoutes(app: Express): Server {
           ni.receiver_id as "receiverId",
           sender.id as "sender.id",
           sender.username as "sender.username",
+          sender.first_name as "sender.firstName",
+          sender.last_name as "sender.lastName",
+          sender.email as "sender.email",
+          sender.profile_picture_url as "sender.profilePictureUrl",
+          sender.job_title as "sender.jobTitle",
+          sender.city as "sender.city",
+          sender.state as "sender.state",
+          sender.country as "sender.country",
           receiver.id as "receiver.id",
-          receiver.username as "receiver.username"
+          receiver.username as "receiver.username",
+          receiver.first_name as "receiver.firstName",
+          receiver.last_name as "receiver.lastName",
+          receiver.email as "receiver.email",
+          receiver.profile_picture_url as "receiver.profilePictureUrl",
+          receiver.job_title as "receiver.jobTitle",
+          receiver.city as "receiver.city",
+          receiver.state as "receiver.state",
+          receiver.country as "receiver.country"
         FROM network_invitations ni
         LEFT JOIN users sender ON ni.sender_id = sender.id
         LEFT JOIN users receiver ON ni.receiver_id = receiver.id
@@ -583,30 +598,46 @@ export function registerRoutes(app: Express): Server {
         ORDER BY ni.created_at DESC`
       );
 
-      // Transform the flat results into nested objects
-      const transformedInvitations = result.rows.map((row: any) => ({
-        id: row.id,
-        status: row.status,
-        createdAt: row.createdAt,
-        senderId: row.senderId,
-        receiverId: row.receiverId,
-        sender: {
-          id: row["sender.id"],
-          username: row["sender.username"],
-        },
-        receiver: {
-          id: row["receiver.id"],
-          username: row["receiver.username"],
-        },
-        type: row.senderId === req.user.id ? 'sent' : 'received'
-      }));
+    // Transform the flat results into nested objects
+    const transformedInvitations = result.rows.map((row: any) => ({
+      id: row.id,
+      status: row.status,
+      createdAt: row.createdAt,
+      senderId: row.senderId,
+      receiverId: row.receiverId,
+      sender: {
+        id: row["sender.id"],
+        username: row["sender.username"],
+        firstName: row["sender.firstName"],
+        lastName: row["sender.lastName"],
+        email: row["sender.email"],
+        profilePictureUrl: row["sender.profilePictureUrl"],
+        jobTitle: row["sender.jobTitle"],
+        city: row["sender.city"],
+        state: row["sender.state"],
+        country: row["sender.country"],
+      },
+      receiver: {
+        id: row["receiver.id"],
+        username: row["receiver.username"],
+        firstName: row["receiver.firstName"],
+        lastName: row["receiver.lastName"],
+        email: row["receiver.email"],
+        profilePictureUrl: row["receiver.profilePictureUrl"],
+        jobTitle: row["receiver.jobTitle"],
+        city: row["receiver.city"],
+        state: row["receiver.state"],
+        country: row["receiver.country"],
+      },
+      type: row.senderId === req.user.id ? 'sent' : 'received'
+    }));
 
-      res.json(transformedInvitations);
-    } catch (error) {
-      console.error('Error fetching network invitations:', error);
-      res.status(500).json({ error: 'Failed to fetch network invitations' });
-    }
-  });
+    res.json(transformedInvitations);
+  } catch (error) {
+    console.error('Error fetching network invitations:', error);
+    res.status(500).json({ error: 'Failed to fetch network invitations' });
+  }
+});
 
   app.post("/api/network/invitations/:id/:action", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
