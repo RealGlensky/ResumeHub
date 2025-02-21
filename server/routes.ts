@@ -9,6 +9,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from "express";
+import { comparePasswords, hashPassword } from './auth'; // Assuming these functions exist in auth.ts
+
 
 // Configure multer for handling image uploads
 const imageStorage = multer.diskStorage({
@@ -213,7 +215,6 @@ export function registerRoutes(app: Express): Server {
       .update(resumes)
       .set({
         isPublic: isVisible,
-        updatedAt: new Date()
       })
       .where(eq(resumes.id, req.params.id))
       .returning();
@@ -245,7 +246,6 @@ export function registerRoutes(app: Express): Server {
       .update(resumes)
       .set({
         mode,
-        updatedAt: new Date()
       })
       .where(eq(resumes.id, req.params.id))
       .returning();
@@ -289,7 +289,6 @@ export function registerRoutes(app: Express): Server {
           city,
           state,
           country,
-          updatedAt: new Date(),
         })
         .where(eq(users.id, req.user.id))
         .returning();
@@ -343,6 +342,45 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add password validation to the routes
+  app.patch("/api/user/password", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Both current and new password are required' });
+    }
+
+    try {
+      // Get user's current password hash
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      // Verify current password
+      const isValid = await comparePasswords(currentPassword, user.password);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Current password is incorrect' });
+      }
+
+      // Hash and update new password
+      const hashedPassword = await hashPassword(newPassword);
+      await db
+        .update(users)
+        .set({
+          password: hashedPassword,
+        })
+        .where(eq(users.id, req.user.id));
+
+      res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+      console.error('Error updating password:', error);
+      res.status(500).json({ error: 'Failed to update password' });
+    }
+  });
 
   // Job offer routes
   app.post("/api/resumes/:id/offers", async (req, res) => {
