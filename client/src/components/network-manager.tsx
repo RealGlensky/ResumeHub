@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
-import { Check, X, User, Mail, Briefcase, MapPin } from "lucide-react";
+import { Check, X, User, Mail, Briefcase, MapPin, User2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -89,6 +89,28 @@ export function NetworkManager() {
       toast({
         title: "Error",
         description: "Failed to process the invitation. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeConnection = useMutation({
+    mutationFn: async (connectionId: number) => {
+      return apiRequest("DELETE", `/api/network/connections/${connectionId}`);
+    },
+    onSuccess: () => {
+      // Invalidate both connections and network resumes queries
+      queryClient.invalidateQueries({ queryKey: ["/api/network/connections"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      toast({
+        title: "Connection removed",
+        description: "The user has been removed from your network.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to remove connection. Please try again.",
         variant: "destructive",
       });
     },
@@ -345,6 +367,16 @@ export function NetworkManager() {
                       </div>
                     </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700"
+                    onClick={() => removeConnection.mutate(connection.id)}
+                    disabled={removeConnection.isPending}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Remove
+                  </Button>
                 </div>
               ))}
             </div>

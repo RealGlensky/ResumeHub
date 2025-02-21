@@ -849,6 +849,42 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add new route for removing connections
+  app.delete("/api/network/connections/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      // Verify the connection exists and user is part of it
+      const [connection] = await db
+        .select()
+        .from(networkConnections)
+        .where(
+          and(
+            eq(networkConnections.id, parseInt(req.params.id)),
+            or(
+              eq(networkConnections.userId1, req.user.id),
+              eq(networkConnections.userId2, req.user.id)
+            )
+          )
+        )
+        .limit(1);
+
+      if (!connection) {
+        return res.status(404).json({ error: 'Connection not found' });
+      }
+
+      // Delete the connection
+      await db
+        .delete(networkConnections)
+        .where(eq(networkConnections.id, parseInt(req.params.id)));
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error removing connection:', error);
+      res.status(500).json({ error: 'Failed to remove connection' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
