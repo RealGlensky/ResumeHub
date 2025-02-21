@@ -889,15 +889,43 @@ export function registerRoutes(app: Express): Server {
           )
         );
 
-      // Delete all comments made by either user on the other's resumes
+      // Delete all comments where:
+      // 1. Comments made by otherUser on currentUser's resumes
+      // 2. Comments made by currentUser on otherUser's resumes
       await db
         .delete(comments)
         .where(
-          inArray(
-            comments.resumeId,
-            userResumes
-              .filter(resume => resume.userId === otherUserId)
-              .map(resume => resume.id)
+          or(
+            // Case 1: Comments made by otherUser on currentUser's resumes
+            and(
+              eq(comments.userId, otherUserId),
+              inArray(
+                comments.resumeId,
+                userResumes
+                  .filter(resume => resume.userId === req.user.id)
+                  .map(resume => resume.id)
+              )
+            ),
+            // Case 2: Comments made by currentUser on otherUser's resumes
+            and(
+              eq(comments.userId, req.user.id),
+              inArray(
+                comments.resumeId,
+                userResumes
+                  .filter(resume => resume.userId === otherUserId)
+                  .map(resume => resume.id)
+              )
+            ),
+            // Case 3: Any replies to the above comments
+            inArray(
+              comments.parentId,
+              userResumes.flatMap(resume => {
+                if (resume.userId === req.user.id) {
+                  return db.select(comments.id).from(comments).where(and(eq(comments.userId, otherUserId), eq(comments.resumeId, resume.id))).then(result => result.map(c => c.id));
+                } else {
+                  return db.select(comments.id).from(comments).where(and(eq(comments.userId, req.user.id), eq(comments.resumeId, resume.id))).then(result => result.map(c => c.id));
+                }
+              })            )
           )
         );
 
