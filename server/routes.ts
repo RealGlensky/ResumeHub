@@ -493,6 +493,8 @@ export function registerRoutes(app: Express): Server {
         content: comments.content,
         userId: comments.userId,
         username: users.username,
+        firstName: users.firstName,
+        lastName: users.lastName,
         profilePictureUrl: users.profilePictureUrl,
         parentId: comments.parentId,
         createdAt: comments.createdAt,

@@ -16,6 +16,8 @@ type FormData = {
 
 type ThreadedComment = Comment & {
   username: string;
+  firstName?: string;
+  lastName?: string;
   profilePictureUrl?: string;
   replies?: ThreadedComment[];
 };
@@ -97,7 +99,7 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
                 <AvatarImage src={comment.profilePictureUrl} alt={displayName} />
               ) : (
                 <AvatarFallback className="bg-gray-200 text-gray-700">
-                  {displayName[0].toUpperCase()}
+                  {comment.firstName?.charAt(0)}{comment.lastName?.charAt(0)}
                 </AvatarFallback>
               )}
             </Avatar>
