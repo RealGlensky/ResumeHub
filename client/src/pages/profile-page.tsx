@@ -62,19 +62,21 @@ function PasswordChangeForm() {
       return res.json();
     },
     onSuccess: () => {
-      // Clear auth cache after password change
-      queryClient.clear();
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-
       toast({
         title: "Password updated",
         description: "Your password has been updated successfully. Please log in again with your new password.",
       });
 
+      // Reset form before logout
+      form.reset();
+
+      // Clear all cache and reset queries before logout
+      queryClient.resetQueries();
+      queryClient.clear();
+      queryClient.removeQueries();
+
       // Log out the user
       logoutMutation.mutate();
-
-      form.reset();
     },
     onError: (error: Error) => {
       toast({

@@ -86,10 +86,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
+      // Reset query client entirely
+      queryClient.resetQueries();
       // Clear all queries from cache
       queryClient.clear();
       // Set user to null
       queryClient.setQueryData(["/api/user"], null);
+      // Remove all query cache
+      queryClient.removeQueries();
     },
     onError: (error: Error) => {
       toast({
