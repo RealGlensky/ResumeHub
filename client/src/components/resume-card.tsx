@@ -11,37 +11,18 @@ import type { Resume } from "@db/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ResumeCardProps {
   resume: Resume;
   user?: { id: number; username: string };
   ownerName?: string;
-  ownerInfo?: {
-    id: number;
-    username: string;
-    firstName: string;
-    lastName: string;
-    profilePictureUrl: string | null;
-  };
 }
 
-export function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
+function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
   const { data: jobOffers = [] } = useQuery<JobOffer[]>({ 
     queryKey: [`/api/resumes/${resume.id}/offers`],
   });
-
-  // Get the absolute URL for the resume file
-  const fileUrl = resume.fileUrl.startsWith('http') 
-    ? resume.fileUrl 
-    : `${window.location.origin}${resume.fileUrl}`;
-
-  // Get the absolute URL for the profile picture
-  const getProfilePictureUrl = (url: string | null) => {
-    if (!url) return null;
-    return url.startsWith('http') ? url : `${window.location.origin}${url}`;
-  };
 
   const deleteResume = useMutation({
     mutationFn: async () => {
@@ -94,26 +75,10 @@ export function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardPro
         <div className="flex justify-between items-start">
           <div className="space-y-2">
             <CardTitle className="text-xl font-semibold">{resume.title}</CardTitle>
-            {ownerName && ownerInfo && (
-              <div className="flex items-center gap-2">
-                <Avatar className="h-6 w-6">
-                  {ownerInfo.profilePictureUrl ? (
-                    <AvatarImage
-                      src={getProfilePictureUrl(ownerInfo.profilePictureUrl)}
-                      alt={`${ownerInfo.firstName} ${ownerInfo.lastName}`}
-                      className="aspect-square h-full w-full"
-                    />
-                  ) : (
-                    <AvatarFallback>
-                      {ownerInfo.firstName.charAt(0)}
-                      {ownerInfo.lastName.charAt(0)}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <p className="text-sm text-muted-foreground">
-                  Uploaded by {ownerName}
-                </p>
-              </div>
+            {ownerName && (
+              <p className="text-sm text-muted-foreground">
+                Uploaded by {ownerName}
+              </p>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -205,7 +170,6 @@ export function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardPro
           <ResumeViewer
             resume={resume}
             mode={resume.mode === 'collaborate' ? 'collaborate' : 'share'}
-            fileUrl={fileUrl} // Added fileUrl prop
           />
 
           <div className="flex items-center gap-4">
@@ -277,4 +241,5 @@ export function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardPro
   );
 }
 
+export { ResumeCard };
 export default ResumeCard;
