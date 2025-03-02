@@ -9,9 +9,14 @@ interface NetworkResume extends Resume {
   owner: {
     id: number;
     username: string;
-    firstName?: string;
-    lastName?: string;
-    profilePictureUrl?: string;
+    firstName: string;
+    lastName: string;
+    profilePictureUrl: string | null;
+    email?: string;
+    jobTitle?: string;
+    city?: string;
+    state?: string;
+    country?: string;
   };
 }
 
@@ -66,7 +71,13 @@ export default function NetworkResumesPage() {
             resume={resume}
             user={user || undefined}
             ownerName={resume.owner.username}
-            ownerInfo={resume.owner}
+            ownerInfo={{
+              id: resume.owner.id,
+              username: resume.owner.username,
+              firstName: resume.owner.firstName,
+              lastName: resume.owner.lastName,
+              profilePictureUrl: resume.owner.profilePictureUrl || undefined,
+            }}
           />
         ))}
       </div>
