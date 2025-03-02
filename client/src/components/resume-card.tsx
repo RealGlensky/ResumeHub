@@ -32,6 +32,12 @@ function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
     queryKey: [`/api/resumes/${resume.id}/offers`],
   });
 
+  // Get the absolute URL for the profile picture
+  const getProfilePictureUrl = (url: string | null) => {
+    if (!url) return null;
+    return url.startsWith('http') ? url : `${window.location.origin}${url}`;
+  };
+
   const deleteResume = useMutation({
     mutationFn: async () => {
       return apiRequest("DELETE", `/api/resumes/${resume.id}`);
@@ -88,14 +94,14 @@ function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
                 <Avatar className="h-6 w-6">
                   {ownerInfo.profilePictureUrl ? (
                     <AvatarImage
-                      src={ownerInfo.profilePictureUrl}
+                      src={getProfilePictureUrl(ownerInfo.profilePictureUrl)}
                       alt={`${ownerInfo.firstName} ${ownerInfo.lastName}`}
                       className="aspect-square h-full w-full"
                     />
                   ) : (
                     <AvatarFallback>
-                      {ownerInfo.firstName?.charAt(0)}
-                      {ownerInfo.lastName?.charAt(0)}
+                      {ownerInfo.firstName.charAt(0)}
+                      {ownerInfo.lastName.charAt(0)}
                     </AvatarFallback>
                   )}
                 </Avatar>
