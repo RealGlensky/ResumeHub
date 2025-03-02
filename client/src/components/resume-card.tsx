@@ -26,11 +26,16 @@ interface ResumeCardProps {
   };
 }
 
-function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
+export function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
   const { data: jobOffers = [] } = useQuery<JobOffer[]>({ 
     queryKey: [`/api/resumes/${resume.id}/offers`],
   });
+
+  // Get the absolute URL for the resume file
+  const fileUrl = resume.fileUrl.startsWith('http') 
+    ? resume.fileUrl 
+    : `${window.location.origin}${resume.fileUrl}`;
 
   // Get the absolute URL for the profile picture
   const getProfilePictureUrl = (url: string | null) => {
@@ -200,6 +205,7 @@ function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
           <ResumeViewer
             resume={resume}
             mode={resume.mode === 'collaborate' ? 'collaborate' : 'share'}
+            fileUrl={fileUrl} // Added fileUrl prop
           />
 
           <div className="flex items-center gap-4">
@@ -271,5 +277,4 @@ function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
   );
 }
 
-export { ResumeCard };
 export default ResumeCard;
