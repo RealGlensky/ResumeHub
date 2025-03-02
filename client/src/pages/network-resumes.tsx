@@ -70,13 +70,13 @@ export default function NetworkResumesPage() {
             key={resume.id} 
             resume={resume}
             user={user || undefined}
-            ownerName={resume.owner.username}
+            ownerName={`${resume.owner.firstName} ${resume.owner.lastName}`}
             ownerInfo={{
               id: resume.owner.id,
               username: resume.owner.username,
               firstName: resume.owner.firstName,
               lastName: resume.owner.lastName,
-              profilePictureUrl: resume.owner.profilePictureUrl || undefined,
+              profilePictureUrl: resume.owner.profilePictureUrl,
             }}
           />
         ))}

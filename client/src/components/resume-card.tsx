@@ -22,7 +22,7 @@ interface ResumeCardProps {
     username: string;
     firstName?: string;
     lastName?: string;
-    profilePictureUrl?: string;
+    profilePictureUrl?: string | null;
   };
 }
 
@@ -89,7 +89,7 @@ function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
                   {ownerInfo?.profilePictureUrl ? (
                     <AvatarImage
                       src={ownerInfo.profilePictureUrl}
-                      alt={ownerInfo.username}
+                      alt={ownerName}
                       className="aspect-square h-full w-full"
                     />
                   ) : (
