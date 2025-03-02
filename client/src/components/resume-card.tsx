@@ -20,9 +20,9 @@ interface ResumeCardProps {
   ownerInfo?: {
     id: number;
     username: string;
-    firstName?: string;
-    lastName?: string;
-    profilePictureUrl?: string | null;
+    firstName: string;
+    lastName: string;
+    profilePictureUrl: string | null;
   };
 }
 
@@ -83,19 +83,19 @@ function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
         <div className="flex justify-between items-start">
           <div className="space-y-2">
             <CardTitle className="text-xl font-semibold">{resume.title}</CardTitle>
-            {ownerName && (
+            {ownerName && ownerInfo && (
               <div className="flex items-center gap-2">
                 <Avatar className="h-6 w-6">
-                  {ownerInfo?.profilePictureUrl ? (
+                  {ownerInfo.profilePictureUrl ? (
                     <AvatarImage
                       src={ownerInfo.profilePictureUrl}
-                      alt={ownerName}
+                      alt={`${ownerInfo.firstName} ${ownerInfo.lastName}`}
                       className="aspect-square h-full w-full"
                     />
                   ) : (
                     <AvatarFallback>
-                      {ownerInfo?.firstName?.charAt(0)}
-                      {ownerInfo?.lastName?.charAt(0)}
+                      {ownerInfo.firstName?.charAt(0)}
+                      {ownerInfo.lastName?.charAt(0)}
                     </AvatarFallback>
                   )}
                 </Avatar>

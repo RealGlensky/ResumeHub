@@ -70,7 +70,7 @@ export default function NetworkResumesPage() {
             key={resume.id} 
             resume={resume}
             user={user || undefined}
-            ownerName={`${resume.owner.firstName} ${resume.owner.lastName}`}
+            ownerName={resume.owner.username}
             ownerInfo={{
               id: resume.owner.id,
               username: resume.owner.username,
