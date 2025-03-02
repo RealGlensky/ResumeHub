@@ -11,14 +11,22 @@ import type { Resume } from "@db/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ResumeCardProps {
   resume: Resume;
   user?: { id: number; username: string };
   ownerName?: string;
+  ownerInfo?: {
+    id: number;
+    username: string;
+    firstName?: string;
+    lastName?: string;
+    profilePictureUrl?: string;
+  };
 }
 
-function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
+function ResumeCard({ resume, user, ownerName, ownerInfo }: ResumeCardProps) {
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
   const { data: jobOffers = [] } = useQuery<JobOffer[]>({ 
     queryKey: [`/api/resumes/${resume.id}/offers`],
@@ -76,9 +84,25 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
           <div className="space-y-2">
             <CardTitle className="text-xl font-semibold">{resume.title}</CardTitle>
             {ownerName && (
-              <p className="text-sm text-muted-foreground">
-                Uploaded by {ownerName}
-              </p>
+              <div className="flex items-center gap-2">
+                <Avatar className="h-6 w-6">
+                  {ownerInfo?.profilePictureUrl ? (
+                    <AvatarImage
+                      src={ownerInfo.profilePictureUrl}
+                      alt={ownerInfo.username}
+                      className="aspect-square h-full w-full"
+                    />
+                  ) : (
+                    <AvatarFallback>
+                      {ownerInfo?.firstName?.charAt(0)}
+                      {ownerInfo?.lastName?.charAt(0)}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <p className="text-sm text-muted-foreground">
+                  Uploaded by {ownerName}
+                </p>
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
