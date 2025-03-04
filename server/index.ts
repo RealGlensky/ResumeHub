@@ -39,8 +39,13 @@ app.use((req, res, next) => {
 (async () => {
   const server = registerRoutes(app);
 
-  // Add a health check endpoint for the root path
+  // Redirect root path to the application
   app.get("/", (_req, res) => {
+    res.redirect("/login");
+  });
+
+  // Add a health check endpoint
+  app.get("/health", (_req, res) => {
     res.status(200).send("OK");
   });
 
