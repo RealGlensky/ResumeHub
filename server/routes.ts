@@ -86,7 +86,7 @@ export function registerRoutes(app: Express): Server {
   // Resume routes
   app.post("/api/resumes", upload.single('file'), async (req, res) => {
     try {
-      if (!req.isAuthenticated()) return res.sendStatus(401);
+      if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
       const { title, isPublic } = req.body;
@@ -113,7 +113,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.get("/api/resumes", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     const userResumes = await db
       .select()
       .from(resumes)
@@ -134,7 +134,7 @@ export function registerRoutes(app: Express): Server {
     // Check if user has access to the resume
     if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
       // If not public, check if users are connected
-      if (!req.user) return res.sendStatus(403);
+      if (!req.user) return res.status(403).json({ error: "Unauthorized" });
 
       const [connection] = await db
         .select()
@@ -153,7 +153,7 @@ export function registerRoutes(app: Express): Server {
         )
         .limit(1);
 
-      if (!connection) return res.sendStatus(403);
+      if (!connection) return res.status(403).json({ error: "Unauthorized" });
     }
 
     res.json(resume);
@@ -161,7 +161,7 @@ export function registerRoutes(app: Express): Server {
 
   // Add new route for deleting a resume
   app.delete("/api/resumes/:id", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     // Verify ownership
     const [resume] = await db
@@ -171,7 +171,7 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
-    if (resume.userId !== req.user.id) return res.sendStatus(403);
+    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
 
     try {
       // Delete the resume file
@@ -194,7 +194,7 @@ export function registerRoutes(app: Express): Server {
 
   // Add new route for toggling resume visibility
   app.patch("/api/resumes/:id/visibility", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     const { isVisible } = req.body;
     if (typeof isVisible !== 'boolean') {
@@ -209,7 +209,7 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
-    if (resume.userId !== req.user.id) return res.sendStatus(403);
+    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
 
     const [updatedResume] = await db
       .update(resumes)
@@ -225,7 +225,7 @@ export function registerRoutes(app: Express): Server {
 
   // Add back the mode toggle endpoint
   app.patch("/api/resumes/:id/mode", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     const { mode } = req.body;
     if (!['share', 'collaborate'].includes(mode)) {
@@ -240,7 +240,7 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
-    if (resume.userId !== req.user.id) return res.sendStatus(403);
+    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
 
     const [updatedResume] = await db
       .update(resumes)
@@ -255,7 +255,7 @@ export function registerRoutes(app: Express): Server {
 
   // Add this route after the existing user routes
   app.patch("/api/user/profile", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     const { firstName, lastName, email, linkedinUrl, jobTitle, profileDescription, city, state, country } = req.body;
 
@@ -306,7 +306,7 @@ export function registerRoutes(app: Express): Server {
   // Update the profile endpoint to handle profile picture updates
   app.post("/api/user/profile-picture", imageUpload.single('profilePicture'), async (req, res) => {
     try {
-      if (!req.isAuthenticated()) return res.sendStatus(401);
+      if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
       const fileUrl = `/uploads/profile-pictures/${req.file.filename}`;
@@ -344,7 +344,7 @@ export function registerRoutes(app: Express): Server {
 
   // Add password validation to the routes
   app.patch("/api/user/password", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     const { currentPassword, newPassword } = req.body;
 
@@ -384,7 +384,7 @@ export function registerRoutes(app: Express): Server {
 
   // Job offer routes
   app.post("/api/resumes/:id/offers", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     const { company, position, status } = req.body;
     const [jobOffer] = await db
       .insert(jobOffers)
@@ -407,7 +407,7 @@ export function registerRoutes(app: Express): Server {
 
     if (!resume) return res.sendStatus(404);
     if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
-      return res.sendStatus(403);
+      return res.status(403).json({ error: "Unauthorized" });
     }
 
     const offers = await db
@@ -419,7 +419,7 @@ export function registerRoutes(app: Express): Server {
 
   // Comment routes
   app.post("/api/resumes/:id/comments", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     // Check if user has access to comment
     const [resume] = await db
@@ -432,7 +432,7 @@ export function registerRoutes(app: Express): Server {
 
     // Only allow comments if user is owner or resume is in collaborate mode
     if (resume.userId !== req.user.id && resume.mode !== 'collaborate') {
-      return res.sendStatus(403);
+      return res.status(403).json({ error: "Unauthorized" });
     }
 
     const { content, parentId } = req.body;
@@ -450,7 +450,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.patch("/api/resumes/:resumeId/comments/:commentId", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     const { content } = req.body;
     const commentId = parseInt(req.params.commentId);
@@ -463,7 +463,7 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!existingComment) return res.sendStatus(404);
-    if (existingComment.userId !== req.user.id) return res.sendStatus(403);
+    if (existingComment.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
 
     const [updatedComment] = await db
       .update(comments)
@@ -483,7 +483,7 @@ export function registerRoutes(app: Express): Server {
 
     if (!resume) return res.sendStatus(404);
     if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
-      return res.sendStatus(403);
+      return res.status(403).json({ error: "Unauthorized" });
     }
 
     // Fetch comments with their replies and profile pictures
@@ -527,7 +527,7 @@ export function registerRoutes(app: Express): Server {
 
   // Network routes
   app.post("/api/network/invite", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     const { receiverId } = req.body;
     if (!receiverId) return res.status(400).json({ error: 'Receiver ID is required' });
@@ -561,7 +561,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.get("/api/network/invitations", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     try {
       const result = await db.execute(
@@ -645,7 +645,7 @@ export function registerRoutes(app: Express): Server {
 
   // Add route for canceling/removing a sent invitation
   app.delete("/api/network/invitations/:id", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     try {
       // Get the invitation and check if user is the sender
@@ -678,7 +678,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/network/invitations/:id/:action", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     const { id, action } = req.params;
     if (!['accept', 'reject'].includes(action)) {
@@ -729,7 +729,7 @@ export function registerRoutes(app: Express): Server {
 
   // Update the network connections endpoint to include all user fields
   app.get("/api/network/connections", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     // Get all connections where the user is either userId1 or userId2
     const connections = await db
@@ -781,7 +781,7 @@ export function registerRoutes(app: Express): Server {
 
   // Update the user search endpoint to include location fields
   app.get("/api/users/search", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     const { query } = req.query;
     if (!query || typeof query !== "string") {
@@ -827,7 +827,7 @@ export function registerRoutes(app: Express): Server {
 
   // Add new route for network resumes
   app.get("/api/network/resumes", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     try {
       // Get all connections where the user is either userId1 or userId2
@@ -894,7 +894,7 @@ export function registerRoutes(app: Express): Server {
 
   // Add new route for removing connections
   app.delete("/api/network/connections/:id", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     try {
       // Verify the connection exists and user is part of it
@@ -906,8 +906,7 @@ export function registerRoutes(app: Express): Server {
             eq(networkConnections.id, parseInt(req.params.id)),
             or(
               eq(networkConnections.userId1, req.user.id),
-              eq(networkConnections.userId2, req.user.id)
-            )
+              eq(networkConnections.userId2, req.user.id)            )
           )
         )
         .limit(1);
@@ -982,7 +981,7 @@ export function registerRoutes(app: Express): Server {
         .delete(networkConnections)
         .where(eq(networkConnections.id, parseInt(req.params.id)));
 
-            res.sendStatus(200);
+      res.sendStatus(200);
     } catch (error) {
       console.error('Error removing connection:', error);
       res.status(500).json({ error: 'Failed to remove connection' });
