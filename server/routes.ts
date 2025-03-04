@@ -9,8 +9,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from "express";
-import { comparePasswords, hashPassword } from './auth'; // Assuming these functions exist in auth.ts
-
+import { comparePasswords, hashPassword } from './auth';
+import { log } from './vite';
 
 // Configure multer for handling image uploads
 const imageStorage = multer.diskStorage({
@@ -159,33 +159,57 @@ export function registerRoutes(app: Express): Server {
     res.json(resume);
   });
 
-  // Add new route for deleting a resume
+  // Add correct type annotation for the resume id
   app.delete("/api/resumes/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
-    // Verify ownership
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
-
-    if (!resume) return res.sendStatus(404);
-    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
-
     try {
-      // Delete the resume file
-      const filePath = path.join(process.cwd(), resume.fileUrl.substring(1)); //remove leading slash
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      const resumeId = req.params.id;
+      if (!resumeId) {
+        return res.status(400).json({ error: "Resume ID is required" });
       }
+
+      // Verify ownership
+      const [resume] = await db
+        .select()
+        .from(resumes)
+        .where(eq(resumes.id, resumeId))
+        .limit(1);
+
+      if (!resume) return res.status(404).json({ error: "Resume not found" });
+      if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+
+      // Delete the resume file if it exists
+      if (resume.fileUrl) {
+        const filePath = path.join(process.cwd(), resume.fileUrl.substring(1)); //remove leading slash
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            log(`Successfully deleted resume file: ${filePath}`);
+          }
+        } catch (fileError) {
+          console.error('Error deleting resume file:', fileError);
+          // Continue with database deletion even if file deletion fails
+        }
+      }
+
+      // Delete all comments associated with the resume first
+      await db
+        .delete(comments)
+        .where(eq(comments.resumeId, resumeId));
+
+      // Delete all job offers associated with the resume
+      await db
+        .delete(jobOffers)
+        .where(eq(jobOffers.resumeId, resumeId));
 
       // Delete the resume from database
       await db
         .delete(resumes)
-        .where(eq(resumes.id, req.params.id));
+        .where(eq(resumes.id, resumeId));
 
-      res.sendStatus(200);
+      log(`Successfully deleted resume with ID: ${resumeId}`);
+      res.json({ message: "Resume deleted successfully" });
     } catch (error) {
       console.error('Error deleting resume:', error);
       res.status(500).json({ error: 'Failed to delete resume' });

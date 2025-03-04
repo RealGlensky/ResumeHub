@@ -11,6 +11,7 @@ import type { Resume } from "@db/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface ResumeCardProps {
   resume: Resume;
@@ -19,6 +20,8 @@ interface ResumeCardProps {
 }
 
 function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
   const { data: jobOffers = [] } = useQuery<JobOffer[]>({ 
     queryKey: [`/api/resumes/${resume.id}/offers`],
@@ -31,6 +34,18 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      setIsDeleteDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Resume deleted successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete resume",
+        variant: "destructive",
+      });
     },
   });
 
@@ -43,6 +58,17 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      toast({
+        title: "Success",
+        description: "Resume visibility updated",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update resume visibility",
+        variant: "destructive",
+      });
     },
   });
 
@@ -84,7 +110,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
           <div className="flex items-center gap-2">
             {isOwner && (
               <>
-                <Dialog>
+                <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="destructive" size="icon">
                       <Trash2 className="h-4 w-4" />
@@ -97,11 +123,17 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
                     </DialogDescription>
                     <div className="flex justify-end gap-2 mt-4">
                       <Button
+                        variant="outline"
+                        onClick={() => setIsDeleteDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
                         variant="destructive"
                         onClick={() => deleteResume.mutate()}
                         disabled={deleteResume.isPending}
                       >
-                        Delete
+                        {deleteResume.isPending ? "Deleting..." : "Delete"}
                       </Button>
                     </div>
                   </DialogContent>
@@ -142,7 +174,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
                 </p>
               </div>
               <Switch
-                checked={resume.isPublic}
+                checked={resume.isPublic ?? false}
                 onCheckedChange={() => toggleVisibility.mutate()}
                 disabled={toggleVisibility.isPending}
               />

@@ -54,7 +54,7 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
+    log(`Error: ${message}`);
   });
 
   // importantly only setup vite in development and after
@@ -74,21 +74,22 @@ app.use((req, res, next) => {
 
   // Try to serve the app on one of several ports
   const tryPorts = [5000, 3000, 8080, 8000];
-  
+
   function attemptListen(portIndex = 0) {
     if (portIndex >= tryPorts.length) {
       log('All ports are in use. Cannot start server.');
       process.exit(1);
       return;
     }
-    
+
     const PORT = tryPorts[portIndex];
-    
-    server.listen(PORT, "0.0.0.0", () => {
-      log(`serving on port ${PORT}`);
+
+    const serverInstance = server.listen(PORT, "0.0.0.0", () => {
+      log(`Server started successfully on port ${PORT}`);
     }).on('error', (e: any) => {
       if (e.code === 'EADDRINUSE') {
-        log(`Port ${PORT} is already in use, trying alternative port...`);
+        log(`Port ${PORT} is already in use, trying next port...`);
+        serverInstance.close();
         attemptListen(portIndex + 1);
       } else {
         console.error('Server error:', e);
@@ -96,6 +97,6 @@ app.use((req, res, next) => {
       }
     });
   }
-  
+
   attemptListen();
 })();
