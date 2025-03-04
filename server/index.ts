@@ -67,19 +67,30 @@ app.use((req, res, next) => {
     }
   }
 
-  // Try to serve the app on port 5000, fallback to other ports if needed
-  const PORT = 5000;
-  server.on('error', (e: any) => {
-    if (e.code === 'EADDRINUSE') {
-      log(`Port ${PORT} is already in use, trying alternative port...`);
-      // Kill the current server process to prevent hanging
-      process.exit(1);
-    } else {
-      console.error('Server error:', e);
-    }
-  });
+  // Try to serve the app on one of several ports
+  const tryPorts = [5000, 3000, 8080, 8000];
   
-  server.listen(PORT, "0.0.0.0", () => {
-    log(`serving on port ${PORT}`);
-  });
+  function attemptListen(portIndex = 0) {
+    if (portIndex >= tryPorts.length) {
+      log('All ports are in use. Cannot start server.');
+      process.exit(1);
+      return;
+    }
+    
+    const PORT = tryPorts[portIndex];
+    
+    server.listen(PORT, "0.0.0.0", () => {
+      log(`serving on port ${PORT}`);
+    }).on('error', (e: any) => {
+      if (e.code === 'EADDRINUSE') {
+        log(`Port ${PORT} is already in use, trying alternative port...`);
+        attemptListen(portIndex + 1);
+      } else {
+        console.error('Server error:', e);
+        process.exit(1);
+      }
+    });
+  }
+  
+  attemptListen();
 })();
