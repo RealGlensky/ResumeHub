@@ -6,11 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { MessageSquare, CornerDownRight, Pencil, Trash2 } from "lucide-react";
+import { MessageSquare, CornerDownRight, Pencil } from "lucide-react";
 import type { Comment } from "@db/schema";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
 
 type FormData = {
   content: string;
@@ -78,37 +76,10 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
   resumeUserId: number;
 }) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const isOwnComment = comment.userId === user?.id;
-
-  const deleteCommentMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest(
-        "DELETE",
-        `/api/resumes/${comment.resumeId}/comments/${comment.id}`
-      );
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/resumes/${comment.resumeId}/comments`] });
-      toast({
-        title: "Success",
-        description: "Comment deleted successfully",
-      });
-      setShowDeleteDialog(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: "Failed to delete comment",
-        variant: "destructive",
-      });
-    },
-  });
 
   if (!isResumeOwner && !isOwnComment && comment.userId !== resumeUserId) {
     return null;
@@ -117,8 +88,6 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
   const displayName = isOwnComment
     ? "You"
     : comment.username;
-
-  const canDelete = isOwnComment || isResumeOwner;
 
   return (
     <div className="space-y-2">
@@ -149,37 +118,6 @@ function CommentItem({ comment, onReply, onEdit, isResumeOwner, resumeUserId }: 
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit
               </Button>
-            )}
-            {canDelete && (
-              <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogTitle>Delete Comment</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to delete this comment? This action cannot be undone.
-                  </DialogDescription>
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowDeleteDialog(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => deleteCommentMutation.mutate()}
-                      disabled={deleteCommentMutation.isPending}
-                    >
-                      {deleteCommentMutation.isPending ? "Deleting..." : "Delete"}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
             )}
             <Button
               variant="ghost"

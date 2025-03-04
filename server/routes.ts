@@ -441,34 +441,6 @@ export function registerRoutes(app: Express): Server {
     res.json(offers);
   });
 
-  // Add new routes for deleting job offers and comments
-  app.delete("/api/resumes/:resumeId/offers/:offerId", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-
-    try {
-      // First check if the resume exists and user has access
-      const [resume] = await db
-        .select()
-        .from(resumes)
-        .where(eq(resumes.id, req.params.resumeId))
-        .limit(1);
-
-      if (!resume) return res.status(404).json({ error: "Resume not found" });
-      if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
-
-      // Delete the job offer
-      await db
-        .delete(jobOffers)
-        .where(eq(jobOffers.id, parseInt(req.params.offerId)));
-
-      log(`Successfully deleted job offer with ID: ${req.params.offerId}`);
-      res.json({ message: "Job offer deleted successfully" });
-    } catch (error) {
-      console.error('Error deleting job offer:', error);
-      res.status(500).json({ error: 'Failed to delete job offer' });
-    }
-  });
-
   // Comment routes
   app.post("/api/resumes/:id/comments", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
@@ -575,51 +547,6 @@ export function registerRoutes(app: Express): Server {
     const rootComments = Object.values(threadedComments);
 
     res.json(rootComments);
-  });
-
-  app.delete("/api/resumes/:resumeId/comments/:commentId", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-
-    try {
-      // First check if the comment exists and belongs to the user
-      const [comment] = await db
-        .select()
-        .from(comments)
-        .where(eq(comments.id, parseInt(req.params.commentId)))
-        .limit(1);
-
-      if (!comment) return res.status(404).json({ error: "Comment not found" });
-
-      // Check if user owns the comment or the resume
-      const [resume] = await db
-        .select()
-        .from(resumes)
-        .where(eq(resumes.id, req.params.resumeId))
-        .limit(1);
-
-      if (!resume) return res.status(404).json({ error: "Resume not found" });
-
-      // User can delete if they own the comment or the resume
-      if (comment.userId !== req.user.id && resume.userId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Delete any replies to this comment first
-      await db
-        .delete(comments)
-        .where(eq(comments.parentId, comment.id));
-
-      // Delete the comment itself
-      await db
-        .delete(comments)
-        .where(eq(comments.id, comment.id));
-
-      log(`Successfully deleted comment with ID: ${comment.id}`);
-      res.json({ message: "Comment deleted successfully" });
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-      res.status(500).json({ error: 'Failed to delete comment' });
-    }
   });
 
   // Network routes
