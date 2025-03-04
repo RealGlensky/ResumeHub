@@ -58,7 +58,13 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    try {
+      serveStatic(app);
+    } catch (error) {
+      console.error("Error serving static files:", error.message);
+      console.error("Falling back to development mode with Vite");
+      await setupVite(app, server);
+    }
   }
 
   // ALWAYS serve the app on port 5000
