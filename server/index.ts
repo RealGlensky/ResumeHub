@@ -41,7 +41,7 @@ app.use((req, res, next) => {
 
   // Redirect root path to the application
   app.get("/", (_req, res) => {
-    res.redirect("/login");
+    res.redirect("/home");
   });
 
   // Add a health check endpoint
