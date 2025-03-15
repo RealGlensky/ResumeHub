@@ -42,7 +42,6 @@ export function UploadResume() {
       const file = data.file[0];
       if (!file) throw new Error("No file selected");
 
-      // Create FormData for file upload
       const formData = new FormData();
       formData.append("file", file);
       formData.append("title", data.title);
@@ -74,6 +73,7 @@ export function UploadResume() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
       setUploadProgress(0);
       toast({
         title: "Success",
@@ -154,7 +154,14 @@ export function UploadResume() {
             name="isPublic"
             render={({ field }) => (
               <FormItem className="flex items-center justify-between">
-                <FormLabel>Make Public</FormLabel>
+                <div className="space-y-0.5">
+                  <FormLabel>Resume Visibility</FormLabel>
+                  <p className="text-sm text-muted-foreground">
+                    {field.value ? 
+                      'Public - Anyone can view this resume' : 
+                      'Private - Only your connections can view this resume'}
+                  </p>
+                </div>
                 <FormControl>
                   <Switch
                     checked={field.value}
