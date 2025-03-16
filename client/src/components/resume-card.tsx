@@ -52,7 +52,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   const toggleVisibility = useMutation({
     mutationFn: async () => {
       return apiRequest("PATCH", `/api/resumes/${resume.id}/visibility`, {
-        isPublic: !resume.isPublic
+        isVisible: !resume.isPublic
       });
     },
     onSuccess: () => {
@@ -170,9 +170,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
               <div className="space-y-1">
                 <h4 className="font-medium">Resume Visibility</h4>
                 <p className="text-sm text-muted-foreground">
-                  {resume.isPublic ? 
-                    'Public - Anyone can view this resume' : 
-                    'Private - Only your connections can view this resume'}
+                  {resume.isPublic ? 'Visible to connections' : 'Hidden from connections'}
                 </p>
               </div>
               <Switch
