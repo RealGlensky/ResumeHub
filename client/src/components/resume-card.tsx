@@ -52,7 +52,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   const toggleVisibility = useMutation({
     mutationFn: async () => {
       return apiRequest("PATCH", `/api/resumes/${resume.id}/visibility`, {
-        isVisible: !resume.isPublic
+        isPublic: !resume.isPublic
       });
     },
     onSuccess: () => {
@@ -94,6 +94,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   });
 
   const isOwner = user?.id === resume.userId;
+  const canViewResume = isOwner || resume.isPublic || (user && resume.isVisible);
 
   return (
     <Card>
@@ -168,9 +169,11 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
               <div className="space-y-1">
-                <h4 className="font-medium">Resume Visibility</h4>
+                <h4 className="font-medium">Resume Privacy</h4>
                 <p className="text-sm text-muted-foreground">
-                  {resume.isPublic ? 'Visible to connections' : 'Hidden from connections'}
+                  {resume.isPublic 
+                    ? 'Public - Anyone can view this resume' 
+                    : 'Private - Only your connections can view this resume'}
                 </p>
               </div>
               <Switch
@@ -180,29 +183,45 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
               />
             </div>
 
-            <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
-              <div className="space-y-1">
-                <h4 className="font-medium">Resume Mode</h4>
-                <p className="text-sm text-muted-foreground">
-                  {resume.mode === 'share' ? 'Share Mode - Others can only view' : 'Collaborate Mode - Others can comment'}
-                </p>
+            {!resume.isPublic && (
+              <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
+                <div className="space-y-1">
+                  <h4 className="font-medium">Network Visibility</h4>
+                  <p className="text-sm text-muted-foreground">
+                    {resume.isVisible 
+                      ? 'Visible to your connections' 
+                      : 'Hidden from your connections'}
+                  </p>
+                </div>
+                <Switch
+                  checked={resume.isVisible ?? false}
+                  onCheckedChange={() => toggleVisibility.mutate()}
+                  disabled={toggleVisibility.isPending}
+                />
               </div>
-              <Switch
-                checked={resume.mode === 'collaborate'}
-                onCheckedChange={() => toggleMode.mutate()}
-                disabled={toggleMode.isPending}
-              />
-            </div>
+            )}
           </div>
         )}
       </CardHeader>
 
       <CardContent>
         <div className="space-y-4">
-          <ResumeViewer
-            resume={resume}
-            mode={resume.mode === 'collaborate' ? 'collaborate' : 'share'}
-          />
+          {canViewResume ? (
+            <ResumeViewer
+              resume={resume}
+              mode={resume.mode === 'collaborate' ? 'collaborate' : 'share'}
+            />
+          ) : (
+            <div className="flex items-center justify-center p-6 bg-secondary rounded-lg">
+              <div className="text-center space-y-2">
+                <EyeOff className="h-8 w-8 mx-auto text-muted-foreground" />
+                <p className="font-medium">This resume is private</p>
+                <p className="text-sm text-muted-foreground">
+                  You need to be connected with {ownerName || "the owner"} to view this resume
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-4">
             <Button
