@@ -58,12 +58,14 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public-resumes"] });
       toast({
         title: "Success",
         description: "Resume privacy status updated",
       });
     },
     onError: (error) => {
+      console.error("Toggle public status error:", error);
       toast({
         title: "Error",
         description: "Failed to update resume privacy status",
@@ -81,12 +83,14 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public-resumes"] });
       toast({
         title: "Success",
         description: "Network visibility updated",
       });
     },
     onError: (error) => {
+      console.error("Toggle network visibility error:", error);
       toast({
         title: "Error",
         description: "Failed to update network visibility",
