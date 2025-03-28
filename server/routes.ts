@@ -363,6 +363,66 @@ export function registerRoutes(app: Express): Server {
     console.log("Updated resume:", updatedResume);
     res.json(updatedResume);
   });
+  
+  // Original visibility endpoints for backward compatibility
+  app.patch("/api/resumes/:id/visibility", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    const { isPublic } = req.body;
+    if (typeof isPublic !== 'boolean') {
+      return res.status(400).json({ error: 'isPublic must be a boolean value' });
+    }
+
+    // Verify ownership
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.id))
+      .limit(1);
+
+    if (!resume) return res.sendStatus(404);
+    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+
+    const [updatedResume] = await db
+      .update(resumes)
+      .set({
+        isPublic,
+      })
+      .where(eq(resumes.id, req.params.id))
+      .returning();
+
+    res.json(updatedResume);
+  });
+  
+  // Original network visibility toggle endpoint for backward compatibility
+  app.patch("/api/resumes/:id/network-visibility", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    const { isVisible } = req.body;
+    if (typeof isVisible !== 'boolean') {
+      return res.status(400).json({ error: 'isVisible must be a boolean value' });
+    }
+
+    // Verify ownership
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.id))
+      .limit(1);
+
+    if (!resume) return res.sendStatus(404);
+    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+
+    const [updatedResume] = await db
+      .update(resumes)
+      .set({
+        isVisible,
+      })
+      .where(eq(resumes.id, req.params.id))
+      .returning();
+
+    res.json(updatedResume);
+  });
 
   // Add this route after the existing user routes
   app.patch("/api/user/profile", async (req, res) => {
