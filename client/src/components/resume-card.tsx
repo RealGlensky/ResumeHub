@@ -212,7 +212,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
                   <h4 className="font-medium">Network Visibility</h4>
                   <p className="text-sm text-muted-foreground">
                     {resume.isVisible 
-                      ? 'Visible to your connections' 
+                      ? 'Visible to all users' 
                       : 'Hidden from your connections'}
                   </p>
                 </div>
