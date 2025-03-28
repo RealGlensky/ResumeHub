@@ -17,7 +17,6 @@ type FormData = {
   title: string;
   file: FileList;
   isPublic: boolean;
-  isVisible: boolean;
 };
 
 export function UploadResume() {
@@ -28,7 +27,6 @@ export function UploadResume() {
     defaultValues: {
       title: "",
       isPublic: false,
-      isVisible: true, // Default to visible to connections when private
     }
   });
 
@@ -49,7 +47,6 @@ export function UploadResume() {
       formData.append("file", file);
       formData.append("title", data.title);
       formData.append("isPublic", String(data.isPublic));
-      formData.append("isVisible", String(data.isVisible));
 
       const xhr = new XMLHttpRequest();
 
@@ -122,7 +119,7 @@ export function UploadResume() {
           <FormField
             control={form.control}
             name="file"
-            rules={{
+            rules={{ 
               required: "File is required",
               validate: validateFileSize
             }}
@@ -156,49 +153,14 @@ export function UploadResume() {
             control={form.control}
             name="isPublic"
             render={({ field }) => (
-              <FormItem className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <FormLabel>Resume Privacy</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      {field.value
-                        ? 'Anyone can view this resume'
-                        : 'Only your connections can view this resume'}
-                    </p>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </div>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="isVisible"
-            render={({ field }) => (
-              <FormItem className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <FormLabel>Network Visibility</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      {field.value
-                        ? 'Visible to your connections'
-                        : 'Hidden from your connections'}
-                    </p>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={form.watch('isPublic')} // Disable if resume is public
-                    />
-                  </FormControl>
-                </div>
+              <FormItem className="flex items-center justify-between">
+                <FormLabel>Make Public</FormLabel>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
               </FormItem>
             )}
           />

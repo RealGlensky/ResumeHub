@@ -49,53 +49,24 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
     },
   });
 
-  const togglePublicStatus = useMutation({
+  const toggleVisibility = useMutation({
     mutationFn: async () => {
-      // Using the original endpoint for maximum compatibility
       return apiRequest("PATCH", `/api/resumes/${resume.id}/visibility`, {
-        isPublic: !resume.isPublic
+        isVisible: !resume.isPublic
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/public-resumes"] });
       toast({
         title: "Success",
-        description: "Resume privacy status updated",
+        description: "Resume visibility updated",
       });
     },
     onError: (error) => {
-      console.error("Toggle public status error:", error);
       toast({
         title: "Error",
-        description: "Failed to update resume privacy status",
-        variant: "destructive",
-      });
-    },
-  });
-  
-  const toggleNetworkVisibility = useMutation({
-    mutationFn: async () => {
-      // Using the original endpoint for maximum compatibility
-      return apiRequest("PATCH", `/api/resumes/${resume.id}/network-visibility`, {
-        isVisible: !resume.isVisible
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/public-resumes"] });
-      toast({
-        title: "Success",
-        description: "Network visibility updated",
-      });
-    },
-    onError: (error) => {
-      console.error("Toggle network visibility error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update network visibility",
+        description: "Failed to update resume visibility",
         variant: "destructive",
       });
     },
@@ -123,7 +94,6 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   });
 
   const isOwner = user?.id === resume.userId;
-  const canViewResume = isOwner || resume.isPublic || (user && resume.isVisible);
 
   return (
     <Card>
@@ -198,59 +168,41 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
               <div className="space-y-1">
-                <h4 className="font-medium">Resume Privacy</h4>
+                <h4 className="font-medium">Resume Visibility</h4>
                 <p className="text-sm text-muted-foreground">
-                  {resume.isPublic 
-                    ? 'Public - Anyone can view this resume' 
-                    : 'Private - Only your connections can view this resume'}
+                  {resume.isPublic ? 'Visible to connections' : 'Hidden from connections'}
                 </p>
               </div>
               <Switch
                 checked={resume.isPublic ?? false}
-                onCheckedChange={() => togglePublicStatus.mutate()}
-                disabled={togglePublicStatus.isPending}
+                onCheckedChange={() => toggleVisibility.mutate()}
+                disabled={toggleVisibility.isPending}
               />
             </div>
 
-            {!resume.isPublic && (
-              <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
-                <div className="space-y-1">
-                  <h4 className="font-medium">Network Visibility</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {resume.isVisible 
-                      ? 'Visible to all users' 
-                      : 'Hidden from your connections'}
-                  </p>
-                </div>
-                <Switch
-                  checked={resume.isVisible ?? false}
-                  onCheckedChange={() => toggleNetworkVisibility.mutate()}
-                  disabled={toggleNetworkVisibility.isPending}
-                />
+            <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
+              <div className="space-y-1">
+                <h4 className="font-medium">Resume Mode</h4>
+                <p className="text-sm text-muted-foreground">
+                  {resume.mode === 'share' ? 'Share Mode - Others can only view' : 'Collaborate Mode - Others can comment'}
+                </p>
               </div>
-            )}
+              <Switch
+                checked={resume.mode === 'collaborate'}
+                onCheckedChange={() => toggleMode.mutate()}
+                disabled={toggleMode.isPending}
+              />
+            </div>
           </div>
         )}
       </CardHeader>
 
       <CardContent>
         <div className="space-y-4">
-          {canViewResume ? (
-            <ResumeViewer
-              resume={resume}
-              mode={resume.mode === 'collaborate' ? 'collaborate' : 'share'}
-            />
-          ) : (
-            <div className="flex items-center justify-center p-6 bg-secondary rounded-lg">
-              <div className="text-center space-y-2">
-                <EyeOff className="h-8 w-8 mx-auto text-muted-foreground" />
-                <p className="font-medium">This resume is private</p>
-                <p className="text-sm text-muted-foreground">
-                  You need to be connected with {ownerName || "the owner"} to view this resume
-                </p>
-              </div>
-            </div>
-          )}
+          <ResumeViewer
+            resume={resume}
+            mode={resume.mode === 'collaborate' ? 'collaborate' : 'share'}
+          />
 
           <div className="flex items-center gap-4">
             <Button

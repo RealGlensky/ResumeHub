@@ -89,7 +89,7 @@ export function registerRoutes(app: Express): Server {
       if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-      const { title, isPublic, isVisible } = req.body;
+      const { title, isPublic } = req.body;
       if (!title) return res.status(400).json({ error: 'Title is required' });
 
       // Generate the file URL
@@ -101,7 +101,6 @@ export function registerRoutes(app: Express): Server {
           title,
           fileUrl,
           isPublic: isPublic === 'true',
-          isVisible: isVisible === 'true',
           userId: req.user.id,
         })
         .returning();
@@ -132,46 +131,29 @@ export function registerRoutes(app: Express): Server {
 
     if (!resume) return res.sendStatus(404);
 
-    // Case 1: Resume is public - anyone can view
-    if (resume.isPublic) {
-      return res.json(resume);
-    }
-    
-    // Case 2: User is the owner - always has access
-    if (req.user && resume.userId === req.user.id) {
-      return res.json(resume);
-    }
-    
-    // Case 3: Private resume - check if user is authenticated, connected, and resume is visible
-    if (!req.user) {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-    
-    // If resume is not visible to connections, deny access
-    if (!resume.isVisible) {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-    
-    // Check if users are connected
-    const [connection] = await db
-      .select()
-      .from(networkConnections)
-      .where(
-        or(
-          and(
-            eq(networkConnections.userId1, req.user.id),
-            eq(networkConnections.userId2, resume.userId)
-          ),
-          and(
-            eq(networkConnections.userId1, resume.userId),
-            eq(networkConnections.userId2, req.user.id)
+    // Check if user has access to the resume
+    if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
+      // If not public, check if users are connected
+      if (!req.user) return res.status(403).json({ error: "Unauthorized" });
+
+      const [connection] = await db
+        .select()
+        .from(networkConnections)
+        .where(
+          or(
+            and(
+              eq(networkConnections.userId1, req.user.id),
+              eq(networkConnections.userId2, resume.userId)
+            ),
+            and(
+              eq(networkConnections.userId1, resume.userId),
+              eq(networkConnections.userId2, req.user.id)
+            )
           )
         )
-      )
-      .limit(1);
+        .limit(1);
 
-    if (!connection) {
-      return res.status(403).json({ error: "Unauthorized" });
+      if (!connection) return res.status(403).json({ error: "Unauthorized" });
     }
 
     res.json(resume);
@@ -234,38 +216,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Route for toggling public/private status
+  // Add new route for toggling resume visibility
   app.patch("/api/resumes/:id/visibility", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-
-    const { isPublic } = req.body;
-    if (typeof isPublic !== 'boolean') {
-      return res.status(400).json({ error: 'isPublic must be a boolean' });
-    }
-
-    // Verify ownership
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
-
-    if (!resume) return res.sendStatus(404);
-    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
-
-    const [updatedResume] = await db
-      .update(resumes)
-      .set({
-        isPublic,
-      })
-      .where(eq(resumes.id, req.params.id))
-      .returning();
-
-    res.json(updatedResume);
-  });
-  
-  // Route for toggling network visibility (visible to connections)
-  app.patch("/api/resumes/:id/network-visibility", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     const { isVisible } = req.body;
@@ -286,7 +238,7 @@ export function registerRoutes(app: Express): Server {
     const [updatedResume] = await db
       .update(resumes)
       .set({
-        isVisible,
+        isPublic: isVisible,
       })
       .where(eq(resumes.id, req.params.id))
       .returning();
@@ -318,133 +270,6 @@ export function registerRoutes(app: Express): Server {
       .update(resumes)
       .set({
         mode,
-      })
-      .where(eq(resumes.id, req.params.id))
-      .returning();
-
-    res.json(updatedResume);
-  });
-  
-  // Combined visibility settings endpoint
-  app.patch("/api/resumes/:id/toggle-settings", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-
-    console.log("Toggle settings request:", req.body);
-    
-    const { isPublic, isVisible, setting } = req.body;
-    
-    // Verify ownership
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
-
-    if (!resume) return res.sendStatus(404);
-    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
-    
-    let updateData = {};
-    
-    // Handle different toggle types
-    if (setting === 'public' && typeof isPublic === 'boolean') {
-      updateData = { isPublic };
-    } else if (setting === 'visible' && typeof isVisible === 'boolean') {
-      updateData = { isVisible };
-    } else {
-      return res.status(400).json({ error: 'Invalid request format' });
-    }
-
-    const [updatedResume] = await db
-      .update(resumes)
-      .set(updateData)
-      .where(eq(resumes.id, req.params.id))
-      .returning();
-
-    console.log("Updated resume:", updatedResume);
-    res.json(updatedResume);
-  });
-  
-  // Original visibility endpoints for backward compatibility
-  app.patch("/api/resumes/:id/visibility", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-
-    console.log("Visibility request body:", req.body);
-    
-    // Check for empty request body
-    if (!req.body || Object.keys(req.body).length === 0) {
-      console.log("Empty request body received");
-      return res.status(400).json({ error: 'Empty request body' });
-    }
-    
-    // Handle both possible formats for the isPublic value
-    let isPublic;
-    if (req.body.isPublic !== undefined) {
-      isPublic = Boolean(req.body.isPublic);
-    } else if (req.body.value !== undefined) {
-      isPublic = Boolean(req.body.value);
-    } else {
-      console.log("Invalid request format:", req.body);
-      return res.status(400).json({ error: 'isPublic or value field must be provided' });
-    }
-
-    // Verify ownership
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
-
-    if (!resume) return res.sendStatus(404);
-    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
-
-    const [updatedResume] = await db
-      .update(resumes)
-      .set({
-        isPublic,
-      })
-      .where(eq(resumes.id, req.params.id))
-      .returning();
-
-    res.json(updatedResume);
-  });
-  
-  // Original network visibility toggle endpoint for backward compatibility
-  app.patch("/api/resumes/:id/network-visibility", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    
-    console.log("Network visibility request body:", req.body);
-    
-    // Check for empty request body
-    if (!req.body || Object.keys(req.body).length === 0) {
-      console.log("Empty request body received");
-      return res.status(400).json({ error: 'Empty request body' });
-    }
-    
-    // Handle both possible formats for the isVisible value
-    let isVisible;
-    if (req.body.isVisible !== undefined) {
-      isVisible = Boolean(req.body.isVisible);
-    } else if (req.body.value !== undefined) {
-      isVisible = Boolean(req.body.value);
-    } else {
-      console.log("Invalid network visibility request format:", req.body);
-      return res.status(400).json({ error: 'isVisible or value field must be provided' });
-    }
-
-    // Verify ownership
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
-
-    if (!resume) return res.sendStatus(404);
-    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
-
-    const [updatedResume] = await db
-      .update(resumes)
-      .set({
-        isVisible,
       })
       .where(eq(resumes.id, req.params.id))
       .returning();
@@ -605,54 +430,7 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
-    
-    // Case 1: Resume is public - anyone can view
-    if (resume.isPublic) {
-      const offers = await db
-        .select()
-        .from(jobOffers)
-        .where(eq(jobOffers.resumeId, req.params.id));
-      return res.json(offers);
-    }
-    
-    // Case 2: User is the owner - always has access
-    if (req.user && resume.userId === req.user.id) {
-      const offers = await db
-        .select()
-        .from(jobOffers)
-        .where(eq(jobOffers.resumeId, req.params.id));
-      return res.json(offers);
-    }
-    
-    // Case 3: Private resume - check if user is authenticated, connected, and resume is visible
-    if (!req.user) {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-    
-    // If resume is not visible to connections, deny access
-    if (!resume.isVisible) {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-    
-    // Check if users are connected
-    const [connection] = await db
-      .select()
-      .from(networkConnections)
-      .where(
-        or(
-          and(
-            eq(networkConnections.userId1, req.user.id),
-            eq(networkConnections.userId2, resume.userId)
-          ),
-          and(
-            eq(networkConnections.userId1, resume.userId),
-            eq(networkConnections.userId2, req.user.id)
-          )
-        )
-      )
-      .limit(1);
-
-    if (!connection) {
+    if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
@@ -728,47 +506,8 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
-    
-    // Case 1: Resume is public - anyone can view
-    if (resume.isPublic) {
-      // Allow access to comments
-    }
-    // Case 2: User is the owner - always has access
-    else if (req.user && resume.userId === req.user.id) {
-      // Allow access to comments
-    }
-    // Case 3: Private resume - check if user is authenticated, connected, and resume is visible
-    else {
-      if (!req.user) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-      
-      // If resume is not visible to connections, deny access
-      if (!resume.isVisible) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-      
-      // Check if users are connected
-      const [connection] = await db
-        .select()
-        .from(networkConnections)
-        .where(
-          or(
-            and(
-              eq(networkConnections.userId1, req.user.id),
-              eq(networkConnections.userId2, resume.userId)
-            ),
-            and(
-              eq(networkConnections.userId1, resume.userId),
-              eq(networkConnections.userId2, req.user.id)
-            )
-          )
-        )
-        .limit(1);
-
-      if (!connection) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
+    if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
+      return res.status(403).json({ error: "Unauthorized" });
     }
 
     // Fetch comments with their replies and profile pictures
@@ -1110,31 +849,7 @@ export function registerRoutes(app: Express): Server {
     res.json(filteredResults);
   });
 
-  // Add route for public resumes (accessible to anyone)
-  app.get("/api/public-resumes", async (req, res) => {
-    try {
-      // Get all public resumes
-      const publicResumes = await db
-        .select({
-          ...resumes,
-          owner: {
-            id: users.id,
-            username: users.username,
-          },
-        })
-        .from(resumes)
-        .leftJoin(users, eq(resumes.userId, users.id))
-        .where(eq(resumes.isPublic, true))
-        .orderBy(desc(resumes.createdAt));
-
-      res.json(publicResumes);
-    } catch (error) {
-      console.error('Error fetching public resumes:', error);
-      res.status(500).json({ error: 'Failed to fetch public resumes' });
-    }
-  });
-
-  // Add route for network resumes
+  // Add new route for network resumes
   app.get("/api/network/resumes", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
@@ -1171,7 +886,7 @@ export function registerRoutes(app: Express): Server {
           )
         );
 
-      // Get both public resumes and resumes from network
+      // Get resumes from connected users
       const networkResumes = await db
         .select({
           ...resumes,
@@ -1183,18 +898,13 @@ export function registerRoutes(app: Express): Server {
         .from(resumes)
         .leftJoin(users, eq(resumes.userId, users.id))
         .where(
-          or(
-            // Public resumes from anyone
-            eq(resumes.isPublic, true),
-            // Or private but visible resumes from connections
-            and(
-              eq(resumes.isPublic, false),
-              eq(resumes.isVisible, true),
-              inArray(
-                resumes.userId,
-                networkUsers.map((user) => user.connectedUserId)
-              )
-            )
+          and(
+            inArray(
+              resumes.userId,
+              networkUsers.map((user) => user.connectedUserId)
+            ),
+            // Only show resumes that are marked as public
+            eq(resumes.isPublic, true)
           )
         )
         .orderBy(desc(resumes.createdAt));

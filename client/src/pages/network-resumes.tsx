@@ -71,12 +71,8 @@ export default function NetworkResumesPage() {
         <div className="text-center py-12">
           <h3 className="text-xl font-semibold mb-2">No network resumes yet</h3>
           <p className="text-muted-foreground">
-            Connect with other users to see their resumes. You'll see:
+            Connect with other users to see their resumes
           </p>
-          <ul className="mt-4 list-disc list-inside text-muted-foreground text-left max-w-md mx-auto">
-            <li>Public resumes from anyone</li>
-            <li>Private resumes from your connections (if they've made them visible)</li>
-          </ul>
         </div>
       )}
     </main>
