@@ -49,7 +49,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
     },
   });
 
-  const toggleVisibility = useMutation({
+  const togglePublicStatus = useMutation({
     mutationFn: async () => {
       return apiRequest("PATCH", `/api/resumes/${resume.id}/visibility`, {
         isPublic: !resume.isPublic
@@ -60,13 +60,36 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
       toast({
         title: "Success",
-        description: "Resume visibility updated",
+        description: "Resume privacy status updated",
       });
     },
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to update resume visibility",
+        description: "Failed to update resume privacy status",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const toggleNetworkVisibility = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/resumes/${resume.id}/network-visibility`, {
+        isVisible: !resume.isVisible
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      toast({
+        title: "Success",
+        description: "Network visibility updated",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update network visibility",
         variant: "destructive",
       });
     },
@@ -178,8 +201,8 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
               </div>
               <Switch
                 checked={resume.isPublic ?? false}
-                onCheckedChange={() => toggleVisibility.mutate()}
-                disabled={toggleVisibility.isPending}
+                onCheckedChange={() => togglePublicStatus.mutate()}
+                disabled={togglePublicStatus.isPending}
               />
             </div>
 
@@ -195,8 +218,8 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
                 </div>
                 <Switch
                   checked={resume.isVisible ?? false}
-                  onCheckedChange={() => toggleVisibility.mutate()}
-                  disabled={toggleVisibility.isPending}
+                  onCheckedChange={() => toggleNetworkVisibility.mutate()}
+                  disabled={toggleNetworkVisibility.isPending}
                 />
               </div>
             )}
