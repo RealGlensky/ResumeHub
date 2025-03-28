@@ -803,6 +803,40 @@ export function registerRoutes(app: Express): Server {
     res.json(connections);
   });
 
+  // Feed endpoint
+  app.get("/api/feed", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    
+    try {
+      // Get user's network connections
+      const connections = await db
+        .select({
+          connectedUserId: networkConnections.userId1,
+        })
+        .from(networkConnections)
+        .where(eq(networkConnections.userId2, req.user.id))
+        .union(
+          db.select({
+            connectedUserId: networkConnections.userId2,
+          })
+          .from(networkConnections)
+          .where(eq(networkConnections.userId1, req.user.id))
+        );
+      
+      const connectedUserIds = connections.map(c => c.connectedUserId);
+      
+      // Add the current user's ID to show their own activity too
+      connectedUserIds.push(req.user.id);
+      
+      // For now, return an empty array (will be populated with real data in the future)
+      // In a real implementation, you would fetch recent activities from various tables
+      res.json([]);
+    } catch (error) {
+      console.error('Error fetching feed:', error);
+      res.status(500).json({ error: 'Failed to fetch feed' });
+    }
+  });
+
   // Update the user search endpoint to include location fields
   app.get("/api/users/search", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
