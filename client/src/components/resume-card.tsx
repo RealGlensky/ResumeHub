@@ -51,8 +51,8 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
 
   const togglePublicStatus = useMutation({
     mutationFn: async () => {
-      return apiRequest("PATCH", `/api/resumes/${resume.id}/toggle-settings`, {
-        setting: 'public',
+      // Using the original endpoint for maximum compatibility
+      return apiRequest("PATCH", `/api/resumes/${resume.id}/visibility`, {
         isPublic: !resume.isPublic
       });
     },
@@ -77,8 +77,8 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   
   const toggleNetworkVisibility = useMutation({
     mutationFn: async () => {
-      return apiRequest("PATCH", `/api/resumes/${resume.id}/toggle-settings`, {
-        setting: 'visible',
+      // Using the original endpoint for maximum compatibility
+      return apiRequest("PATCH", `/api/resumes/${resume.id}/network-visibility`, {
         isVisible: !resume.isVisible
       });
     },

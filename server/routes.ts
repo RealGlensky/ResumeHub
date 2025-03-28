@@ -368,9 +368,23 @@ export function registerRoutes(app: Express): Server {
   app.patch("/api/resumes/:id/visibility", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
-    const { isPublic } = req.body;
-    if (typeof isPublic !== 'boolean') {
-      return res.status(400).json({ error: 'isPublic must be a boolean value' });
+    console.log("Visibility request body:", req.body);
+    
+    // Check for empty request body
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log("Empty request body received");
+      return res.status(400).json({ error: 'Empty request body' });
+    }
+    
+    // Handle both possible formats for the isPublic value
+    let isPublic;
+    if (req.body.isPublic !== undefined) {
+      isPublic = Boolean(req.body.isPublic);
+    } else if (req.body.value !== undefined) {
+      isPublic = Boolean(req.body.value);
+    } else {
+      console.log("Invalid request format:", req.body);
+      return res.status(400).json({ error: 'isPublic or value field must be provided' });
     }
 
     // Verify ownership
@@ -397,10 +411,24 @@ export function registerRoutes(app: Express): Server {
   // Original network visibility toggle endpoint for backward compatibility
   app.patch("/api/resumes/:id/network-visibility", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-
-    const { isVisible } = req.body;
-    if (typeof isVisible !== 'boolean') {
-      return res.status(400).json({ error: 'isVisible must be a boolean value' });
+    
+    console.log("Network visibility request body:", req.body);
+    
+    // Check for empty request body
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log("Empty request body received");
+      return res.status(400).json({ error: 'Empty request body' });
+    }
+    
+    // Handle both possible formats for the isVisible value
+    let isVisible;
+    if (req.body.isVisible !== undefined) {
+      isVisible = Boolean(req.body.isVisible);
+    } else if (req.body.value !== undefined) {
+      isVisible = Boolean(req.body.value);
+    } else {
+      console.log("Invalid network visibility request format:", req.body);
+      return res.status(400).json({ error: 'isVisible or value field must be provided' });
     }
 
     // Verify ownership
