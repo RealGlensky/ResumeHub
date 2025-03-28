@@ -6,6 +6,7 @@ import { AuthProvider } from "@/hooks/use-auth";
 import { NavigationBar } from "@/components/navigation-bar";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
+import FeedPage from "@/pages/feed-page";
 import AuthPage from "@/pages/auth-page";
 import NetworkPage from "@/pages/network";
 import NetworkResumesPage from "@/pages/network-resumes";
@@ -18,6 +19,7 @@ function Router() {
       <NavigationBar />
       <main className="container py-6">
         <Switch>
+          <ProtectedRoute path="/feed" component={FeedPage} />
           <ProtectedRoute path="/" component={HomePage} />
           <ProtectedRoute path="/network" component={NetworkPage} />
           <ProtectedRoute path="/network/resumes" component={NetworkResumesPage} />
