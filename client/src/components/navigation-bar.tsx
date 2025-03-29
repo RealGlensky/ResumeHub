@@ -22,10 +22,10 @@ export function NavigationBar() {
   const { user, logoutMutation } = useAuth();
 
   return (
-    <header className="border-b bg-white text-black">
+    <header className="sticky top-0 z-50 border-b border-border/40 bg-white shadow-sm">
       <div className="container flex h-14 items-center">
         <Link href="/" className="mr-6 flex items-center space-x-2">
-          <span className="font-bold">ResumeBook</span>
+          <span className="font-bold text-black">ResumeBook</span>
         </Link>
         <NavigationMenu className="flex-1">
           <NavigationMenuList>
@@ -59,14 +59,14 @@ export function NavigationBar() {
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="text-black">
                 <UserCircle className="h-5 w-5" />
                 <span className="sr-only">User menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-white text-black">
               <DropdownMenuItem asChild>
-                <Link href="/profile">Profile</Link>
+                <Link href="/profile" className="text-black">Profile</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
