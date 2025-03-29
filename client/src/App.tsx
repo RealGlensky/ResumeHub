@@ -15,7 +15,9 @@ import { ProtectedRoute } from "./lib/protected-route";
 function Router() {
   return (
     <div className="min-h-screen bg-background">
-      <NavigationBar />
+      <div className="bg-white">
+        <NavigationBar />
+      </div>
       <main className="container py-6">
         <Switch>
           <ProtectedRoute path="/" component={HomePage} />
