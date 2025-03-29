@@ -22,7 +22,7 @@ export function NavigationBar() {
   const { user, logoutMutation } = useAuth();
 
   return (
-    <header className="border-b bg-white">
+    <header className="border-b bg-white text-black">
       <div className="container flex h-14 items-center">
         <Link href="/" className="mr-6 flex items-center space-x-2">
           <span className="font-bold">ResumeBook</span>

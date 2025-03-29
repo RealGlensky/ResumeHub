@@ -14,7 +14,7 @@ import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <div className="bg-white">
         <NavigationBar />
       </div>
