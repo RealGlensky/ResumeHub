@@ -25,7 +25,7 @@ export function NavigationBar() {
         backgroundColor: 'white'
       }}>
         <Link href="/">
-          <a style={{
+          <div style={{
             marginRight: '24px',
             display: 'flex',
             alignItems: 'center',
@@ -34,12 +34,12 @@ export function NavigationBar() {
             textDecoration: 'none'
           }}>
             ResumeBook
-          </a>
+          </div>
         </Link>
         
         <div style={{ display: 'flex', flex: 1, backgroundColor: 'white' }}>
           <Link href="/">
-            <a style={{
+            <div style={{
               display: 'flex',
               alignItems: 'center',
               padding: '8px 16px',
@@ -53,11 +53,11 @@ export function NavigationBar() {
             }}>
               <FileText style={{ marginRight: '8px', width: '16px', height: '16px', color: 'black' }} />
               Your Resumes
-            </a>
+            </div>
           </Link>
           
           <Link href="/network">
-            <a style={{
+            <div style={{
               display: 'flex',
               alignItems: 'center',
               padding: '8px 16px',
@@ -71,11 +71,11 @@ export function NavigationBar() {
             }}>
               <Users style={{ marginRight: '8px', width: '16px', height: '16px', color: 'black' }} />
               Network
-            </a>
+            </div>
           </Link>
           
           <Link href="/network/resumes">
-            <a style={{
+            <div style={{
               display: 'flex',
               alignItems: 'center',
               padding: '8px 16px',
@@ -89,7 +89,7 @@ export function NavigationBar() {
             }}>
               <Files style={{ marginRight: '8px', width: '16px', height: '16px', color: 'black' }} />
               Network Resumes
-            </a>
+            </div>
           </Link>
         </div>
 
