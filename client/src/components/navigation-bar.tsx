@@ -23,45 +23,50 @@ export function NavigationBar() {
   const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
 
-  // Only show navigation items when user is logged in
-  const showNav = !!user;
-
-  const NavItem = ({ href, icon: Icon, children }: { 
-    href: string; 
+  // Define the type for nav links
+  type NavLink = {
+    href: string;
     icon: React.ElementType;
-    children: React.ReactNode;
-  }) => {
-    const isActive = location === href;
-    
+    label: string;
+  };
+
+  // Navigation links configuration
+  const navLinks: NavLink[] = [
+    { href: "/feed", icon: Activity, label: "Activity Feed" },
+    { href: "/", icon: FileText, label: "Your Resumes" },
+    { href: "/network", icon: Users, label: "Network" },
+    { href: "/network/resumes", icon: Files, label: "Network Resumes" }
+  ];
+
+  // Simple navigation item rendering
+  const renderNavItem = (link: NavLink) => {
+    const isActive = location === link.href;
     return (
-      <NavigationMenuItem>
-        <Link href={href}>
-          <NavigationMenuLink className={cn(
-            "group inline-flex h-9 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
-            isActive ? "bg-accent/50" : "bg-background"
-          )}>
-            <Icon className="mr-2 h-4 w-4" />
-            {children}
-          </NavigationMenuLink>
+      <NavigationMenuItem key={link.href}>
+        <Link href={link.href}>
+          <Button 
+            variant={isActive ? "secondary" : "ghost"} 
+            className="flex items-center gap-2"
+          >
+            <link.icon className="h-4 w-4" />
+            <span>{link.label}</span>
+          </Button>
         </Link>
       </NavigationMenuItem>
     );
   };
 
   return (
-    <header className="border-b bg-background">
+    <header className="border-b bg-background sticky top-0 z-50">
       <div className="container flex h-14 items-center">
         <Link href={user ? "/" : "/auth"} className="mr-6 flex items-center space-x-2">
           <span className="font-bold">ResumeBook</span>
         </Link>
         
-        {showNav && (
+        {user && (
           <NavigationMenu className="flex-1">
-            <NavigationMenuList>
-              <NavItem href="/feed" icon={Activity}>Feed</NavItem>
-              <NavItem href="/" icon={FileText}>Your Resumes</NavItem>
-              <NavItem href="/network" icon={Users}>Network</NavItem>
-              <NavItem href="/network/resumes" icon={Files}>Network Resumes</NavItem>
+            <NavigationMenuList className="flex gap-1">
+              {navLinks.map(renderNavItem)}
             </NavigationMenuList>
           </NavigationMenu>
         )}
