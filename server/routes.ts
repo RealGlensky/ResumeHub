@@ -11,6 +11,7 @@ import fs from "fs";
 import express from "express";
 import { comparePasswords, hashPassword } from './auth';
 import { log } from './vite';
+import { WebSocketServer, WebSocket } from 'ws';
 
 // Configure multer for handling image uploads
 const imageStorage = multer.diskStorage({
