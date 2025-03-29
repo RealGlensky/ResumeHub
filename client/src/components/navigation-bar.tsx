@@ -14,39 +14,39 @@ export function NavigationBar() {
   const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
 
-  // Completely simplified navigation structure
+  // Updated navigation with white background
   return (
-    <header className="border-b bg-primary text-white sticky top-0 z-50">
+    <header className="border-b bg-white text-gray-800 shadow-sm sticky top-0 z-50">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href={user ? "/" : "/auth"} className="text-xl font-bold">
+        <Link href={user ? "/" : "/auth"} className="text-xl font-bold text-primary">
           ResumeBook
         </Link>
         
         {user && (
           <div className="flex items-center space-x-6">
             <Link href="/feed">
-              <div className={`flex items-center space-x-1 px-3 py-2 rounded-lg ${location === "/feed" ? "bg-white/20" : ""}`}>
+              <div className={`flex items-center space-x-1 px-3 py-2 rounded-lg ${location === "/feed" ? "bg-gray-100 text-primary font-medium" : "hover:bg-gray-100"}`}>
                 <Activity className="h-5 w-5" />
                 <span>Activity Feed</span>
               </div>
             </Link>
             
             <Link href="/">
-              <div className={`flex items-center space-x-1 px-3 py-2 rounded-lg ${location === "/" ? "bg-white/20" : ""}`}>
+              <div className={`flex items-center space-x-1 px-3 py-2 rounded-lg ${location === "/" ? "bg-gray-100 text-primary font-medium" : "hover:bg-gray-100"}`}>
                 <FileText className="h-5 w-5" />
                 <span>Your Resumes</span>
               </div>
             </Link>
             
             <Link href="/network">
-              <div className={`flex items-center space-x-1 px-3 py-2 rounded-lg ${location === "/network" ? "bg-white/20" : ""}`}>
+              <div className={`flex items-center space-x-1 px-3 py-2 rounded-lg ${location === "/network" ? "bg-gray-100 text-primary font-medium" : "hover:bg-gray-100"}`}>
                 <Users className="h-5 w-5" />
                 <span>Network</span>
               </div>
             </Link>
             
             <Link href="/network/resumes">
-              <div className={`flex items-center space-x-1 px-3 py-2 rounded-lg ${location === "/network/resumes" ? "bg-white/20" : ""}`}>
+              <div className={`flex items-center space-x-1 px-3 py-2 rounded-lg ${location === "/network/resumes" ? "bg-gray-100 text-primary font-medium" : "hover:bg-gray-100"}`}>
                 <Files className="h-5 w-5" />
                 <span>Network Resumes</span>
               </div>
@@ -54,7 +54,7 @@ export function NavigationBar() {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="bg-white/10 border-none text-white hover:bg-white/20">
+                <Button variant="outline" size="icon" className="border-gray-200 hover:bg-gray-100">
                   <UserCircle className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
