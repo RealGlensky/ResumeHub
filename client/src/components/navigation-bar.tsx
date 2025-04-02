@@ -1,118 +1,85 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import { UserCircle, LogOut, FileText, Users, Files } from "lucide-react";
 
 export function NavigationBar() {
   const { user, logoutMutation } = useAuth();
 
   return (
-    <div style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 50,
-      backgroundColor: 'white',
-      color: 'black',
-      borderBottom: '1px solid #e5e7eb',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-    }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        display: 'flex',
-        height: '56px',
-        alignItems: 'center',
-        padding: '0 16px',
-        backgroundColor: 'white'
-      }}>
-        <Link href="/">
-          <div style={{
-            marginRight: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            fontWeight: 'bold',
-            color: 'black',
-            textDecoration: 'none'
-          }}>
-            ResumeBook
-          </div>
+    <header className="border-b bg-background">
+      <div className="container flex h-14 items-center">
+        <Link href="/" className="mr-6 flex items-center space-x-2">
+          <span className="font-bold">ResumeBook</span>
         </Link>
-        
-        <div style={{ display: 'flex', flex: 1, backgroundColor: 'white' }}>
-          <Link href="/">
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '8px 16px',
-              marginRight: '8px',
-              borderRadius: '4px',
-              backgroundColor: 'white',
-              color: 'black',
-              fontSize: '14px',
-              fontWeight: 500,
-              textDecoration: 'none'
-            }}>
-              <FileText style={{ marginRight: '8px', width: '16px', height: '16px', color: 'black' }} />
-              Your Resumes
-            </div>
-          </Link>
-          
-          <Link href="/network">
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '8px 16px',
-              marginRight: '8px',
-              borderRadius: '4px',
-              backgroundColor: 'white',
-              color: 'black',
-              fontSize: '14px',
-              fontWeight: 500,
-              textDecoration: 'none'
-            }}>
-              <Users style={{ marginRight: '8px', width: '16px', height: '16px', color: 'black' }} />
-              Network
-            </div>
-          </Link>
-          
-          <Link href="/network/resumes">
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '8px 16px',
-              marginRight: '8px',
-              borderRadius: '4px',
-              backgroundColor: 'white',
-              color: 'black',
-              fontSize: '14px',
-              fontWeight: 500,
-              textDecoration: 'none'
-            }}>
-              <Files style={{ marginRight: '8px', width: '16px', height: '16px', color: 'black' }} />
-              Network Resumes
-            </div>
-          </Link>
-        </div>
+        <NavigationMenu className="flex-1">
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <Link href="/">
+                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Your Resumes
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link href="/network">
+                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
+                  <Users className="mr-2 h-4 w-4" />
+                  Network
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link href="/network/resumes">
+                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
+                  <Files className="mr-2 h-4 w-4" />
+                  Network Resumes
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
 
         {user && (
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => window.location.href = '/profile'}
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '8px',
-                borderRadius: '4px',
-                color: 'black'
-              }}
-            >
-              <UserCircle style={{ width: '20px', height: '20px', color: 'black' }} />
-            </button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <UserCircle className="h-5 w-5" />
+                <span className="sr-only">User menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/profile">Profile</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => logoutMutation.mutate()}
+                className="text-red-600 focus:text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
-    </div>
+    </header>
   );
 }
