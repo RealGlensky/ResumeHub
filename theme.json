@@ -1,7 +1,11 @@
 
 {
   "variant": "professional",
-  "primary": "hsl(0 0% 20%)",
+  "primary": "hsl(0 0% 100%)",
   "appearance": "light",
-  "radius": 0.5
+  "radius": 0.5,
+  "accent": {
+    "DEFAULT": "hsl(0 0% 100%)",
+    "foreground": "hsl(0 0% 0%)"
+  }
 }
