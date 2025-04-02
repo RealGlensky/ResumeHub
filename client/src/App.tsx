@@ -3,7 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
-import { NavigationBar } from "@/components/navigation-bar";
+import { WhiteNavigationBar } from "@/components/white-navigation-bar";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
@@ -14,11 +14,9 @@ import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="bg-white">
-        <NavigationBar />
-      </div>
-      <main className="container py-6">
+    <div style={{ minHeight: "100vh", backgroundColor: "white" }}>
+      <WhiteNavigationBar />
+      <main style={{ maxWidth: "1200px", margin: "0 auto", padding: "24px 16px" }}>
         <Switch>
           <ProtectedRoute path="/" component={HomePage} />
           <ProtectedRoute path="/network" component={NetworkPage} />
