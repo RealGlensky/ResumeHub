@@ -1,0 +1,113 @@
+/* This CSS file contains styling overrides to ensure the navbar is white with black text */
+
+/* Override all CSS variables related to colors */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 47.4% 11.2%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+
+  --primary: 0 0% 100%; /* white */
+  --primary-foreground: 0 0% 0%; /* black */
+
+  --secondary: 0 0% 100%; /* white */
+  --secondary-foreground: 0 0% 0%; /* black */
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 100% 50%;
+  --destructive-foreground: 210 40% 98%;
+
+  --ring: 215 20.2% 65.1%;
+
+  --radius: 0.5rem;
+}
+
+/* Specific overrides for the navbar */
+nav, 
+nav *, 
+header, 
+header *,
+.custom-navbar, 
+.custom-navbar *, 
+[class*="navigation"], 
+[class*="navigation"] * {
+  background-color: white !important;
+  color: black !important;
+}
+
+/* Force all primary and secondary components to be white/black */
+.bg-primary, 
+.bg-secondary,
+[class*="bg-primary"], 
+[class*="bg-secondary"] {
+  background-color: white !important;
+}
+
+.text-primary, 
+.text-secondary,
+.text-primary-foreground, 
+.text-secondary-foreground,
+[class*="text-primary"], 
+[class*="text-secondary"] {
+  color: black !important;
+}
+
+/* Additional overrides for any potential problematic elements */
+button.bg-primary,
+a.bg-primary {
+  background-color: white !important;
+  color: black !important;
+}
+
+.bg-white {
+  background-color: white !important;
+}
+
+.text-black {
+  color: black !important;
+}
+
+/* Override any shadcn components that might be used in the navbar */
+[role="navigation"],
+[role="menubar"] {
+  background-color: white !important;
+  color: black !important;
+}
+
+/* Last resort, override all elements that might be in the navbar hierarchy */
+body > div > nav,
+body > div > header,
+body > div > div > nav,
+body > div > div > header {
+  background-color: white !important;
+  color: black !important;
+}
+
+/* Override any specific component styles */
+[data-radix-navigation-menu-root] {
+  background-color: white !important;
+  color: black !important;
+}
+
+/* Links and buttons */
+a, button {
+  color: inherit;
+}
+
+/* SVG icons */
+svg, path {
+  fill: currentColor;
+  stroke: currentColor;
+}
