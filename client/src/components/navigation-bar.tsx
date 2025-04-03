@@ -14,29 +14,29 @@ export function NavigationBar() {
   const { user, logoutMutation } = useAuth();
 
   return (
-    <header className="border-b bg-background">
+    <header className="border-b" style={{ backgroundColor: "#f6f6f6" }}>
       <div className="flex h-12 items-center px-4">
         <Link href="/" className="mr-8 flex items-center">
           <span className="font-bold text-sm">ResumeBook</span>
         </Link>
         
-        <div className="flex space-x-6">
+        <div className="flex space-x-8">
           <Link href="/">
-            <div className="flex items-center text-sm font-medium hover:text-accent-foreground">
+            <div className="flex items-center text-sm font-medium text-gray-700">
               <FileText className="mr-2 h-4 w-4" />
               Your Resumes
             </div>
           </Link>
           
           <Link href="/network">
-            <div className="flex items-center text-sm font-medium hover:text-accent-foreground">
+            <div className="flex items-center text-sm font-medium text-gray-700">
               <Users className="mr-2 h-4 w-4" />
               Network
             </div>
           </Link>
           
           <Link href="/network/resumes">
-            <div className="flex items-center text-sm font-medium hover:text-accent-foreground">
+            <div className="flex items-center text-sm font-medium text-gray-700">
               <Files className="mr-2 h-4 w-4" />
               Network Resumes
             </div>
@@ -48,8 +48,8 @@ export function NavigationBar() {
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <UserCircle className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="rounded-full hover:bg-transparent">
+                <UserCircle className="h-5 w-5 text-gray-700" />
                 <span className="sr-only">User menu</span>
               </Button>
             </DropdownMenuTrigger>
