@@ -1,6 +1,14 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -14,43 +22,46 @@ export function NavigationBar() {
   const { user, logoutMutation } = useAuth();
 
   return (
-    <header style={{ borderBottom: "1px solid #e5e5e5", backgroundColor: "#f6f6f6" }}>
-      <div style={{ display: "flex", height: "48px", alignItems: "center", padding: "0 16px" }}>
-        <Link href="/" style={{ marginRight: "32px", display: "flex", alignItems: "center" }}>
-          <span style={{ fontWeight: "bold", fontSize: "14px" }}>ResumeBook</span>
+    <header className="border-b bg-background">
+      <div className="container flex h-14 items-center">
+        <Link href="/" className="mr-6 flex items-center space-x-2">
+          <span className="font-bold">ResumeBook</span>
         </Link>
-        
-        <div style={{ display: "flex", gap: "32px" }}>
-          <Link href="/">
-            <div style={{ display: "flex", alignItems: "center", fontSize: "14px", fontWeight: 500, color: "#4b5563" }}>
-              <FileText style={{ marginRight: "8px", height: "16px", width: "16px" }} />
-              Your Resumes
-            </div>
-          </Link>
-          
-          <Link href="/network">
-            <div style={{ display: "flex", alignItems: "center", fontSize: "14px", fontWeight: 500, color: "#4b5563" }}>
-              <Users style={{ marginRight: "8px", height: "16px", width: "16px" }} />
-              Network
-            </div>
-          </Link>
-          
-          <Link href="/network/resumes">
-            <div style={{ display: "flex", alignItems: "center", fontSize: "14px", fontWeight: 500, color: "#4b5563" }}>
-              <Files style={{ marginRight: "8px", height: "16px", width: "16px" }} />
-              Network Resumes
-            </div>
-          </Link>
-        </div>
-        
-        <div style={{ flex: 1 }}></div>
+        <NavigationMenu className="flex-1">
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <Link href="/">
+                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Your Resumes
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link href="/network">
+                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
+                  <Users className="mr-2 h-4 w-4" />
+                  Network
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <Link href="/network/resumes">
+                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
+                  <Files className="mr-2 h-4 w-4" />
+                  Network Resumes
+                </NavigationMenuLink>
+              </Link>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
 
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" style={{ borderRadius: "9999px" }}>
-                <UserCircle style={{ height: "20px", width: "20px", color: "#4b5563" }} />
-                <span style={{ position: "absolute", width: "1px", height: "1px", padding: "0", margin: "-1px", overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", borderWidth: "0" }}>User menu</span>
+              <Button variant="ghost" size="icon">
+                <UserCircle className="h-5 w-5" />
+                <span className="sr-only">User menu</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -60,9 +71,9 @@ export function NavigationBar() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => logoutMutation.mutate()}
-                style={{ color: "#dc2626" }}
+                className="text-red-600 focus:text-red-600"
               >
-                <LogOut style={{ marginRight: "8px", height: "16px", width: "16px" }} />
+                <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </DropdownMenuItem>
             </DropdownMenuContent>

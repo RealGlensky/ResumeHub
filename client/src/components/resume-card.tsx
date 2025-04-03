@@ -23,7 +23,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
-  const { data: jobOffers = [] } = useQuery<JobOffer[]>({ 
+  const { data: jobOffers = [] } = useQuery<JobOffer[]>({
     queryKey: [`/api/resumes/${resume.id}/offers`],
   });
 
@@ -94,6 +94,32 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   });
 
   const isOwner = user?.id === resume.userId;
+
+  const deleteJobOfferMutation = useMutation({
+    mutationFn: async (offerId: number) => {
+      return apiRequest("DELETE", `/api/resumes/${resume.id}/offers/${offerId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/resumes/${resume.id}/offers`] });
+      toast({
+        title: "Success",
+        description: "Job offer deleted successfully",
+      });
+      const dialogElement = document.querySelector('[role="dialog"]');
+      if (dialogElement) {
+        const closeButton = dialogElement.querySelector('button[type="button"]');
+        if (closeButton) closeButton.click();
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete job offer",
+        variant: "destructive",
+      });
+    },
+  });
+
 
   return (
     <Card>
@@ -246,23 +272,63 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
                 {jobOffers.map((offer) => (
                   <div
                     key={offer.id}
-                    className="p-3 bg-secondary rounded-lg"
+                    className="p-3 bg-secondary rounded-lg flex justify-between items-start"
                   >
-                    <div className="font-medium">{offer.company}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {offer.position}
+                    <div>
+                      <div className="font-medium">{offer.company}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {offer.position}
+                      </div>
+                      <div className="text-sm text-primary mt-1">
+                        Status: {offer.status}
+                      </div>
                     </div>
-                    <div className="text-sm text-primary mt-1">
-                      Status: {offer.status}
-                    </div>
+                    {isOwner && (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogTitle>Delete Job Offer</DialogTitle>
+                          <DialogDescription>
+                            Are you sure you want to delete this job offer? This action cannot be undone.
+                          </DialogDescription>
+                          <div className="flex justify-end gap-2 mt-4">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                const dialogElement = document.querySelector('[role="dialog"]');
+                                if (dialogElement) {
+                                  const closeButton = dialogElement.querySelector('button[type="button"]');
+                                  if (closeButton) closeButton.click();
+                                }
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              onClick={() => {
+                                deleteJobOfferMutation.mutate(offer.id);
+                              }}
+                              disabled={deleteJobOfferMutation.isPending}
+                            >
+                              {deleteJobOfferMutation.isPending ? "Deleting..." : "Delete"}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
           ) : (
             (isOwner || resume.mode === 'collaborate') && (
-              <CommentSection 
-                resumeId={resume.id} 
+              <CommentSection
+                resumeId={resume.id}
                 resumeUserId={resume.userId}
               />
             )
