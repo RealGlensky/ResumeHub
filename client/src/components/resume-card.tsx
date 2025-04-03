@@ -245,9 +245,9 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
             
             <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
               <div className="space-y-1">
-                <h4 className="font-medium">Public Visibility</h4>
+                <h4 className="font-medium">Global Visibility</h4>
                 <p className="text-sm text-muted-foreground">
-                  {resume.isGlobalPublic ? 'Public - Visible to everyone' : 'Private - Visible only to connections'}
+                  {resume.isGlobalPublic ? 'Public to everyone' : 'Only visible to connections'}
                 </p>
               </div>
               <Switch
