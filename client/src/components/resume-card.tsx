@@ -72,6 +72,30 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
       });
     },
   });
+  
+  const toggleGlobalVisibility = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/resumes/${resume.id}/global-visibility`, {
+        isGlobalPublic: !resume.isGlobalPublic
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      toast({
+        title: "Success",
+        description: `Resume is now ${!resume.isGlobalPublic ? 'public' : 'private'}`,
+      });
+    },
+    onError: (error) => {
+      console.error("Toggle global visibility error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update resume global visibility. You may not have permission.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const sendInvitation = useMutation({
     mutationFn: async (receiverId: number) => {
@@ -207,7 +231,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
               <div className="space-y-1">
-                <h4 className="font-medium">Resume Visibility</h4>
+                <h4 className="font-medium">Network Visibility</h4>
                 <p className="text-sm text-muted-foreground">
                   {resume.isPublic ? 'Visible to connections' : 'Hidden from connections'}
                 </p>
@@ -216,6 +240,20 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
                 checked={resume.isPublic ?? false}
                 onCheckedChange={() => toggleVisibility.mutate()}
                 disabled={toggleVisibility.isPending}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
+              <div className="space-y-1">
+                <h4 className="font-medium">Public Visibility</h4>
+                <p className="text-sm text-muted-foreground">
+                  {resume.isGlobalPublic ? 'Public - Visible to everyone' : 'Private - Visible only to connections'}
+                </p>
+              </div>
+              <Switch
+                checked={resume.isGlobalPublic ?? false}
+                onCheckedChange={() => toggleGlobalVisibility.mutate()}
+                disabled={toggleGlobalVisibility.isPending}
               />
             </div>
 

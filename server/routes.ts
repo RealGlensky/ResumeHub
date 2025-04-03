@@ -131,9 +131,14 @@ export function registerRoutes(app: Express): Server {
 
     if (!resume) return res.sendStatus(404);
 
-    // Check if user has access to the resume
+    // If resume is globally public, allow access to anyone logged in
+    if (resume.isGlobalPublic && req.user) {
+      return res.json(resume);
+    }
+
+    // Check if user has access to the resume through network connections
     if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
-      // If not public, check if users are connected
+      // If not visible to connections, check if users are connected
       if (!req.user) return res.status(403).json({ error: "Unauthorized" });
 
       const [connection] = await db
@@ -246,6 +251,36 @@ export function registerRoutes(app: Express): Server {
     res.json(updatedResume);
   });
 
+
+  // Add route for toggling global visibility (public/private)
+  app.patch("/api/resumes/:id/global-visibility", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    const { isGlobalPublic } = req.body;
+    if (typeof isGlobalPublic !== 'boolean') {
+      return res.status(400).json({ error: 'isGlobalPublic must be a boolean' });
+    }
+
+    // Verify ownership
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.id))
+      .limit(1);
+
+    if (!resume) return res.sendStatus(404);
+    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+
+    const [updatedResume] = await db
+      .update(resumes)
+      .set({
+        isGlobalPublic,
+      })
+      .where(eq(resumes.id, req.params.id))
+      .returning();
+
+    res.json(updatedResume);
+  });
 
   // Add back the mode toggle endpoint
   app.patch("/api/resumes/:id/mode", async (req, res) => {
@@ -430,6 +465,17 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
+    
+    // If resume is globally public, allow access to anyone logged in
+    if (resume.isGlobalPublic && req.user) {
+      const offers = await db
+        .select()
+        .from(jobOffers)
+        .where(eq(jobOffers.resumeId, req.params.id));
+      return res.json(offers);
+    }
+    
+    // Otherwise check if user has access through network connections
     if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
       return res.status(403).json({ error: "Unauthorized" });
     }
@@ -534,7 +580,12 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
-    if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
+    
+    // If resume is globally public, allow access to anyone logged in
+    if (resume.isGlobalPublic && req.user) {
+      // Allow access for globally public resumes
+    } else if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
+      // If not public to connections or globally public, check access rights
       return res.status(403).json({ error: "Unauthorized" });
     }
 
@@ -976,7 +1027,7 @@ export function registerRoutes(app: Express): Server {
               resumes.userId,
               networkUsers.map((user) => user.connectedUserId)
             ),
-            // Only show resumes that are marked as public
+            // Only show resumes that are marked as public to connections
             eq(resumes.isPublic, true)
           )
         )
@@ -986,6 +1037,42 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error fetching network resumes:', error);
       res.status(500).json({ error: 'Failed to fetch network resumes' });
+    }
+  });
+  
+  // Add new route for public feed resumes (globally public)
+  app.get("/api/feed/resumes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+      // Get all resumes that are marked as globally public
+      const publicResumes = await db
+        .select({
+          ...resumes,
+          owner: {
+            id: users.id,
+            username: users.username,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profilePictureUrl: users.profilePictureUrl,
+          },
+        })
+        .from(resumes)
+        .leftJoin(users, eq(resumes.userId, users.id))
+        .where(
+          and(
+            // Skip user's own resumes
+            not(eq(resumes.userId, req.user.id)),
+            // Only show resumes that are marked as globally public
+            eq(resumes.isGlobalPublic, true)
+          )
+        )
+        .orderBy(desc(resumes.createdAt));
+
+      res.json(publicResumes);
+    } catch (error) {
+      console.error('Error fetching public resumes:', error);
+      res.status(500).json({ error: 'Failed to fetch public resumes' });
     }
   });
 
