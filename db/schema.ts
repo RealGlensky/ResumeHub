@@ -25,8 +25,7 @@ export const resumes = pgTable("resumes", {
   userId: integer("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   fileUrl: text("file_url").notNull(),
-  isPublic: boolean("is_public").default(false), // Visible to connections
-  isGlobalPublic: boolean("is_global_public").default(false), // Visible to everyone (even non-connections)
+  isPublic: boolean("is_public").default(false),
   mode: text("mode").notNull().default('share'), // 'share' or 'collaborate'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
