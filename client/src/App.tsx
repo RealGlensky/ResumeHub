@@ -10,6 +10,7 @@ import AuthPage from "@/pages/auth-page";
 import NetworkPage from "@/pages/network";
 import NetworkResumesPage from "@/pages/network-resumes";
 import ProfilePage from "@/pages/profile-page";
+import FeedPage from "@/pages/feed-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -18,12 +19,17 @@ function Router() {
       <NavigationBar />
       <main className="container py-6">
         <Switch>
-          <ProtectedRoute path="/" component={HomePage} />
-          <ProtectedRoute path="/network" component={NetworkPage} />
-          <ProtectedRoute path="/network/resumes" component={NetworkResumesPage} />
-          <ProtectedRoute path="/profile" component={ProfilePage} />
-          <Route path="/auth" component={AuthPage} />
-          <Route component={NotFound} />
+          <ProtectedRoute path="/" component={() => <HomePage />} />
+          <ProtectedRoute path="/feed" component={() => <FeedPage />} />
+          <ProtectedRoute path="/network" component={() => <NetworkPage />} />
+          <ProtectedRoute path="/network/resumes" component={() => <NetworkResumesPage />} />
+          <ProtectedRoute path="/profile" component={() => <ProfilePage />} />
+          <Route path="/auth">
+            <AuthPage />
+          </Route>
+          <Route>
+            <NotFound />
+          </Route>
         </Switch>
       </main>
     </div>
