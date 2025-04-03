@@ -60,13 +60,14 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
       toast({
         title: "Success",
-        description: "Resume visibility updated",
+        description: `Resume is now ${!resume.isPublic ? 'visible' : 'hidden'} to connections`,
       });
     },
     onError: (error) => {
+      console.error("Toggle visibility error:", error);
       toast({
         title: "Error",
-        description: "Failed to update resume visibility",
+        description: "Failed to update resume visibility. You may not have permission.",
         variant: "destructive",
       });
     },
@@ -119,7 +120,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
       });
       const dialogElement = document.querySelector('[role="dialog"]');
       if (dialogElement) {
-        const closeButton = dialogElement.querySelector('button[type="button"]');
+        const closeButton = dialogElement.querySelector('button[type="button"]') as HTMLButtonElement;
         if (closeButton) closeButton.click();
       }
     },
@@ -313,7 +314,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
                               onClick={() => {
                                 const dialogElement = document.querySelector('[role="dialog"]');
                                 if (dialogElement) {
-                                  const closeButton = dialogElement.querySelector('button[type="button"]');
+                                  const closeButton = dialogElement.querySelector('button[type="button"]') as HTMLButtonElement;
                                   if (closeButton) closeButton.click();
                                 }
                               }}
