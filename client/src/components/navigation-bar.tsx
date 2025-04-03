@@ -1,14 +1,6 @@
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -23,43 +15,40 @@ export function NavigationBar() {
 
   return (
     <header className="border-b bg-background">
-      <div className="container flex h-14 items-center">
-        <Link href="/" className="mr-6 flex items-center space-x-2">
-          <span className="font-bold">ResumeBook</span>
+      <div className="flex h-12 items-center px-4">
+        <Link href="/" className="mr-8 flex items-center">
+          <span className="font-bold text-sm">ResumeBook</span>
         </Link>
-        <NavigationMenu className="flex-1">
-          <NavigationMenuList>
-            <NavigationMenuItem>
-              <Link href="/">
-                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Your Resumes
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <Link href="/network">
-                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
-                  <Users className="mr-2 h-4 w-4" />
-                  Network
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <Link href="/network/resumes">
-                <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50">
-                  <Files className="mr-2 h-4 w-4" />
-                  Network Resumes
-                </NavigationMenuLink>
-              </Link>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
+        
+        <div className="flex space-x-6">
+          <Link href="/">
+            <div className="flex items-center text-sm font-medium hover:text-accent-foreground">
+              <FileText className="mr-2 h-4 w-4" />
+              Your Resumes
+            </div>
+          </Link>
+          
+          <Link href="/network">
+            <div className="flex items-center text-sm font-medium hover:text-accent-foreground">
+              <Users className="mr-2 h-4 w-4" />
+              Network
+            </div>
+          </Link>
+          
+          <Link href="/network/resumes">
+            <div className="flex items-center text-sm font-medium hover:text-accent-foreground">
+              <Files className="mr-2 h-4 w-4" />
+              Network Resumes
+            </div>
+          </Link>
+        </div>
+        
+        <div className="flex-1"></div>
 
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="rounded-full">
                 <UserCircle className="h-5 w-5" />
                 <span className="sr-only">User menu</span>
               </Button>
