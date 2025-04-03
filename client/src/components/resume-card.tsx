@@ -90,6 +90,18 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      toast({
+        title: "Success",
+        description: `Resume mode set to ${resume.mode === 'share' ? 'collaborate' : 'share'}`,
+      });
+    },
+    onError: (error) => {
+      console.error("Toggle mode error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update resume mode. You may not have permission.",
+        variant: "destructive",
+      });
     },
   });
 
