@@ -114,12 +114,29 @@ export function registerRoutes(app: Express): Server {
 
   app.get("/api/resumes", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const userResumes = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.userId, req.user.id))
-      .orderBy(desc(resumes.createdAt));
-    res.json(userResumes);
+    try {
+      const userResumes = await db
+        .select({
+          id: resumes.id,
+          userId: resumes.userId,
+          title: resumes.title,
+          fileUrl: resumes.fileUrl,
+          isPublic: resumes.isPublic,
+          accessType: resumes.accessType,
+          mode: resumes.mode,
+          createdAt: resumes.createdAt,
+          updatedAt: resumes.updatedAt
+        })
+        .from(resumes)
+        .where(eq(resumes.userId, req.user.id))
+        .orderBy(desc(resumes.createdAt));
+      
+      console.log("Resumes API response:", JSON.stringify(userResumes[0], null, 2));
+      res.json(userResumes);
+    } catch (error) {
+      console.error("Error fetching resumes:", error);
+      res.status(500).json({ error: "Failed to fetch resumes" });
+    }
   });
 
   app.get("/api/resumes/:id", async (req, res) => {
