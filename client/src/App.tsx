@@ -20,7 +20,9 @@ function Router() {
       <main className="container py-6">
         <Switch>
           <ProtectedRoute path="/" component={() => <HomePage />} />
-          <ProtectedRoute path="/feed" component={() => <FeedPage />} />
+          <Route path="/feed">
+            <FeedPage />
+          </Route>
           <ProtectedRoute path="/network" component={() => <NetworkPage />} />
           <ProtectedRoute path="/network/resumes" component={() => <NetworkResumesPage />} />
           <ProtectedRoute path="/profile" component={() => <ProfilePage />} />
