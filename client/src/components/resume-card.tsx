@@ -23,6 +23,9 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
+  
+  // Debug: Log resume data to check if accessType is populated
+  console.log('Resume data:', JSON.stringify(resume, null, 2));
   const { data: jobOffers = [] } = useQuery<JobOffer[]>({
     queryKey: [`/api/resumes/${resume.id}/offers`],
   });
