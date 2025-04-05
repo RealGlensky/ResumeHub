@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { resumes, jobOffers, comments, networkInvitations, networkConnections, users } from "@db/schema";
-import { eq, and, or, desc, inArray, not, ilike, exists } from "drizzle-orm";
+import { eq, and, or, desc, inArray, not, ilike, exists, sql } from "drizzle-orm";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
@@ -304,25 +304,31 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).json({ error: 'Invalid access type' });
     }
 
-    // Verify ownership
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
+    try {
+      // Verify ownership
+      const [resume] = await db
+        .select()
+        .from(resumes)
+        .where(eq(resumes.id, req.params.id))
+        .limit(1);
 
-    if (!resume) return res.sendStatus(404);
-    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+      if (!resume) return res.sendStatus(404);
+      if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
 
-    const [updatedResume] = await db
-      .update(resumes)
-      .set({
-        accessType,
-      })
-      .where(eq(resumes.id, req.params.id))
-      .returning();
+      const [updatedResume] = await db
+        .update(resumes)
+        .set({
+          accessType: sql`${accessType}`,
+        })
+        .where(eq(resumes.id, req.params.id))
+        .returning();
 
-    res.json(updatedResume);
+      log(`Updated resume ${resume.id} access type to ${accessType}`);
+      res.json(updatedResume);
+    } catch (error) {
+      console.error("Error updating resume access:", error);
+      res.status(500).json({ error: "Failed to update resume access" });
+    }
   });
 
   // Add this route after the existing user routes
@@ -977,12 +983,13 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             eq(resumes.isPublic, true),
-            eq(resumes.accessType, 'everyone')
+            eq(sql`${resumes.accessType}`, 'everyone')
           )
         )
         .orderBy(desc(resumes.createdAt))
         .limit(20); // Limit to avoid too many results
 
+      log(`Fetched ${publicResumes.length} public resumes for feed`);
       res.json(publicResumes);
     } catch (error) {
       console.error('Error fetching feed:', error);
