@@ -27,6 +27,7 @@ export const resumes = pgTable("resumes", {
   fileUrl: text("file_url").notNull(),
   isPublic: boolean("is_public").default(false),
   mode: text("mode").notNull().default('share'), // 'share' or 'collaborate'
+  accessType: text("access_type").notNull().default('connections'), // 'connections' or 'everyone'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

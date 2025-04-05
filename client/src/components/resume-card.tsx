@@ -104,6 +104,30 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
       });
     },
   });
+  
+  const toggleAccess = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", `/api/resumes/${resume.id}/access`, {
+        accessType: resume.accessType === 'connections' ? 'everyone' : 'connections'
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
+      toast({
+        title: "Success",
+        description: `Resume access set to ${resume.accessType === 'connections' ? 'everyone' : 'connections only'}`,
+      });
+    },
+    onError: (error) => {
+      console.error("Toggle access error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update resume access. You may not have permission.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const isOwner = user?.id === resume.userId;
 
@@ -215,6 +239,20 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
                 checked={resume.isPublic ?? false}
                 onCheckedChange={() => toggleVisibility.mutate()}
                 disabled={toggleVisibility.isPending}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-2 bg-secondary rounded-lg">
+              <div className="space-y-1">
+                <h4 className="font-medium">Resume Access</h4>
+                <p className="text-sm text-muted-foreground">
+                  {resume.accessType === 'everyone' ? 'Everyone can view' : 'Only your connections can view'}
+                </p>
+              </div>
+              <Switch
+                checked={resume.accessType === 'everyone'}
+                onCheckedChange={() => toggleAccess.mutate()}
+                disabled={toggleAccess.isPending}
               />
             </div>
 

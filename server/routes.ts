@@ -131,31 +131,49 @@ export function registerRoutes(app: Express): Server {
 
     if (!resume) return res.sendStatus(404);
 
-    // Check if user has access to the resume
-    if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
-      // If not public, check if users are connected
-      if (!req.user) return res.status(403).json({ error: "Unauthorized" });
-
-      const [connection] = await db
-        .select()
-        .from(networkConnections)
-        .where(
-          or(
-            and(
-              eq(networkConnections.userId1, req.user.id),
-              eq(networkConnections.userId2, resume.userId)
-            ),
-            and(
-              eq(networkConnections.userId1, resume.userId),
-              eq(networkConnections.userId2, req.user.id)
-            )
+    // If the user is the owner, always allow access
+    if (req.user && resume.userId === req.user.id) {
+      return res.json(resume);
+    }
+    
+    // If resume is not public (hidden), only the owner can access it
+    if (!resume.isPublic) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    
+    // If accessType is 'everyone', allow anyone to view when resume is public
+    if (resume.accessType === 'everyone') {
+      return res.json(resume);
+    }
+    
+    // If accessType is 'connections', check if users are connected
+    // First make sure the user is authenticated
+    if (!req.user) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    
+    // Check if the users are connected
+    const [connection] = await db
+      .select()
+      .from(networkConnections)
+      .where(
+        or(
+          and(
+            eq(networkConnections.userId1, req.user.id),
+            eq(networkConnections.userId2, resume.userId)
+          ),
+          and(
+            eq(networkConnections.userId1, resume.userId),
+            eq(networkConnections.userId2, req.user.id)
           )
         )
-        .limit(1);
+      )
+      .limit(1);
 
-      if (!connection) return res.status(403).json({ error: "Unauthorized" });
+    if (!connection) {
+      return res.status(403).json({ error: "Unauthorized" });
     }
-
+    
     res.json(resume);
   });
 
@@ -270,6 +288,36 @@ export function registerRoutes(app: Express): Server {
       .update(resumes)
       .set({
         mode,
+      })
+      .where(eq(resumes.id, req.params.id))
+      .returning();
+
+    res.json(updatedResume);
+  });
+  
+  // Add access type toggle endpoint
+  app.patch("/api/resumes/:id/access", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    const { accessType } = req.body;
+    if (!['connections', 'everyone'].includes(accessType)) {
+      return res.status(400).json({ error: 'Invalid access type' });
+    }
+
+    // Verify ownership
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.id))
+      .limit(1);
+
+    if (!resume) return res.sendStatus(404);
+    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+
+    const [updatedResume] = await db
+      .update(resumes)
+      .set({
+        accessType,
       })
       .where(eq(resumes.id, req.params.id))
       .returning();
@@ -430,10 +478,58 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
-    if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
+    
+    // If the user is the owner, always allow access
+    if (req.user && resume.userId === req.user.id) {
+      const offers = await db
+        .select()
+        .from(jobOffers)
+        .where(eq(jobOffers.resumeId, req.params.id));
+      return res.json(offers);
+    }
+    
+    // If resume is not public (hidden), only the owner can access it
+    if (!resume.isPublic) {
       return res.status(403).json({ error: "Unauthorized" });
     }
+    
+    // If accessType is 'everyone', allow anyone to view when resume is public
+    if (resume.accessType === 'everyone') {
+      const offers = await db
+        .select()
+        .from(jobOffers)
+        .where(eq(jobOffers.resumeId, req.params.id));
+      return res.json(offers);
+    }
+    
+    // If accessType is 'connections', check if users are connected
+    // First make sure the user is authenticated
+    if (!req.user) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    
+    // Check if the users are connected
+    const [connection] = await db
+      .select()
+      .from(networkConnections)
+      .where(
+        or(
+          and(
+            eq(networkConnections.userId1, req.user.id),
+            eq(networkConnections.userId2, resume.userId)
+          ),
+          and(
+            eq(networkConnections.userId1, resume.userId),
+            eq(networkConnections.userId2, req.user.id)
+          )
+        )
+      )
+      .limit(1);
 
+    if (!connection) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    
     const offers = await db
       .select()
       .from(jobOffers)
@@ -534,8 +630,47 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     if (!resume) return res.sendStatus(404);
-    if (!resume.isPublic && (!req.user || resume.userId !== req.user.id)) {
+    
+    // If the user is the owner, always allow access
+    if (req.user && resume.userId === req.user.id) {
+      // Continue to fetch comments
+    }
+    // If resume is not public (hidden), only the owner can access it
+    else if (!resume.isPublic) {
       return res.status(403).json({ error: "Unauthorized" });
+    }
+    // If accessType is 'everyone', allow anyone to view when resume is public
+    else if (resume.accessType === 'everyone') {
+      // Continue to fetch comments
+    }
+    // If accessType is 'connections', check if users are connected
+    else {
+      // First make sure the user is authenticated
+      if (!req.user) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      // Check if the users are connected
+      const [connection] = await db
+        .select()
+        .from(networkConnections)
+        .where(
+          or(
+            and(
+              eq(networkConnections.userId1, req.user.id),
+              eq(networkConnections.userId2, resume.userId)
+            ),
+            and(
+              eq(networkConnections.userId1, resume.userId),
+              eq(networkConnections.userId2, req.user.id)
+            )
+          )
+        )
+        .limit(1);
+
+      if (!connection) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
     }
 
     // Fetch comments with their replies and profile pictures
@@ -825,6 +960,36 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Update the network connections endpoint to include all user fields
+  // Add a feed endpoint that shows public resumes with 'everyone' access
+  app.get("/api/feed", async (req, res) => {
+    try {
+      // Get public resumes that are accessible to everyone
+      const publicResumes = await db
+        .select({
+          ...resumes,
+          owner: {
+            id: users.id,
+            username: users.username,
+          },
+        })
+        .from(resumes)
+        .leftJoin(users, eq(resumes.userId, users.id))
+        .where(
+          and(
+            eq(resumes.isPublic, true),
+            eq(resumes.accessType, 'everyone')
+          )
+        )
+        .orderBy(desc(resumes.createdAt))
+        .limit(20); // Limit to avoid too many results
+
+      res.json(publicResumes);
+    } catch (error) {
+      console.error('Error fetching feed:', error);
+      res.status(500).json({ error: 'Failed to fetch feed' });
+    }
+  });
+
   app.get("/api/network/connections", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
@@ -977,7 +1142,12 @@ export function registerRoutes(app: Express): Server {
               networkUsers.map((user) => user.connectedUserId)
             ),
             // Only show resumes that are marked as public
-            eq(resumes.isPublic, true)
+            eq(resumes.isPublic, true),
+            // Filter based on access type - either show to connections or to everyone
+            or(
+              eq(resumes.accessType, 'connections'),
+              eq(resumes.accessType, 'everyone')
+            )
           )
         )
         .orderBy(desc(resumes.createdAt));
