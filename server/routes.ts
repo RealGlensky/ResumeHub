@@ -89,11 +89,14 @@ export function registerRoutes(app: Express): Server {
       if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-      const { title, isPublic } = req.body;
+      const { title, isPublic, accessType } = req.body;
       if (!title) return res.status(400).json({ error: 'Title is required' });
 
       // Generate the file URL
       const fileUrl = `/uploads/${req.file.filename}`;
+
+      // Set default accessType to connections if not provided
+      const resumeAccessType = accessType || 'connections';
 
       const [resume] = await db
         .insert(resumes)
@@ -101,6 +104,7 @@ export function registerRoutes(app: Express): Server {
           title,
           fileUrl,
           isPublic: isPublic === 'true',
+          accessType: resumeAccessType,
           userId: req.user.id,
         })
         .returning();

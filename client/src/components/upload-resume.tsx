@@ -17,6 +17,7 @@ type FormData = {
   title: string;
   file: FileList;
   isPublic: boolean;
+  accessType: "connections" | "everyone";
 };
 
 export function UploadResume() {
@@ -27,6 +28,7 @@ export function UploadResume() {
     defaultValues: {
       title: "",
       isPublic: false,
+      accessType: "connections",
     }
   });
 
@@ -47,6 +49,7 @@ export function UploadResume() {
       formData.append("file", file);
       formData.append("title", data.title);
       formData.append("isPublic", String(data.isPublic));
+      formData.append("accessType", data.accessType);
 
       const xhr = new XMLHttpRequest();
 
@@ -159,6 +162,29 @@ export function UploadResume() {
                   <Switch
                     checked={field.value}
                     onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="accessType"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between">
+                <div>
+                  <FormLabel>Resume Access</FormLabel>
+                  <p className="text-sm text-muted-foreground">
+                    {field.value === 'everyone' ? 'Everyone can view' : 'Only my connections can view'}
+                  </p>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value === 'everyone'}
+                    onCheckedChange={(checked) => 
+                      field.onChange(checked ? 'everyone' : 'connections')
+                    }
                   />
                 </FormControl>
               </FormItem>
