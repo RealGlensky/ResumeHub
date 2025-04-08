@@ -25,7 +25,9 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
   
   // Debug: Log resume data to check if accessType is populated
-  console.log('Resume data:', JSON.stringify(resume, null, 2));
+  console.log('Resume data:', resume);
+  console.log('accessType:', resume.accessType);
+  console.log('isOwner:', isOwner);
   const { data: jobOffers = [] } = useQuery<JobOffer[]>({
     queryKey: [`/api/resumes/${resume.id}/offers`],
   });
