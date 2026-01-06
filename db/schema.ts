@@ -66,6 +66,15 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Update user relations to include network connections
 export const userRelations = relations(users, ({ many }) => ({
   resumes: many(resumes),
@@ -130,6 +139,7 @@ export const insertJobOfferSchema = createInsertSchema(jobOffers);
 export const insertCommentSchema = createInsertSchema(comments);
 export const insertNetworkInvitationSchema = createInsertSchema(networkInvitations);
 export const insertNetworkConnectionSchema = createInsertSchema(networkConnections);
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens);
 
 // Type definitions
 export type InsertUser = typeof users.$inferInsert;
@@ -139,3 +149,4 @@ export type JobOffer = typeof jobOffers.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type NetworkInvitation = typeof networkInvitations.$inferSelect;
 export type NetworkConnection = typeof networkConnections.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
