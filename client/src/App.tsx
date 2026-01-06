@@ -7,6 +7,7 @@ import { NavigationBar } from "@/components/navigation-bar";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
+import ResetPasswordPage from "@/pages/reset-password-page";
 import NetworkPage from "@/pages/network";
 import NetworkResumesPage from "@/pages/network-resumes";
 import ProfilePage from "@/pages/profile-page";
@@ -28,6 +29,9 @@ function Router() {
           <ProtectedRoute path="/profile" component={() => <ProfilePage />} />
           <Route path="/auth">
             <AuthPage />
+          </Route>
+          <Route path="/reset-password">
+            <ResetPasswordPage />
           </Route>
           <Route>
             <NotFound />

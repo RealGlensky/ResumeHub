@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { resumes, jobOffers, comments, networkInvitations, networkConnections, users, passwordResetTokens } from "@db/schema";
+import { resumes, jobOffers, comments, networkInvitations, networkConnections, users, passwordResetTokens, passwordSchema } from "@db/schema";
 import { randomBytes } from "crypto";
 import { sendPasswordResetEmail } from "./resend";
 import { eq, and, or, desc, inArray, not, ilike, exists, sql } from "drizzle-orm";
@@ -533,6 +533,12 @@ export function registerRoutes(app: Express): Server {
 
     if (!token || !newPassword) {
       return res.status(400).json({ error: 'Token and new password are required' });
+    }
+
+    // Validate password strength
+    const passwordResult = passwordSchema.safeParse(newPassword);
+    if (!passwordResult.success) {
+      return res.status(400).json({ error: passwordResult.error.errors[0].message });
     }
 
     try {

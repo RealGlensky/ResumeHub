@@ -8,6 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username or email is required"),
@@ -27,12 +31,18 @@ const registerSchema = z.object({
     .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
 type LoginFormData = z.infer<typeof loginSchema>;
 type RegisterFormData = z.infer<typeof registerSchema>;
+type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   if (user) {
     setLocation("/");
@@ -45,22 +55,29 @@ export default function AuthPage() {
         <Card className="w-full max-w-md mx-4">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-center">
-              Welcome to ResumeBook
+              {showForgotPassword ? "Reset Password" : "Welcome to ResumeBook"}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
-              <TabsContent value="login">
-                <LoginForm onSubmit={(data) => loginMutation.mutate(data)} />
-              </TabsContent>
-              <TabsContent value="register">
-                <RegisterForm onSubmit={(data) => registerMutation.mutate(data)} />
-              </TabsContent>
-            </Tabs>
+            {showForgotPassword ? (
+              <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
+            ) : (
+              <Tabs defaultValue="login">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="login">Login</TabsTrigger>
+                  <TabsTrigger value="register">Register</TabsTrigger>
+                </TabsList>
+                <TabsContent value="login">
+                  <LoginForm 
+                    onSubmit={(data) => loginMutation.mutate(data)} 
+                    onForgotPassword={() => setShowForgotPassword(true)}
+                  />
+                </TabsContent>
+                <TabsContent value="register">
+                  <RegisterForm onSubmit={(data) => registerMutation.mutate(data)} />
+                </TabsContent>
+              </Tabs>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -84,7 +101,7 @@ export default function AuthPage() {
   );
 }
 
-function LoginForm({ onSubmit }: { onSubmit: (data: LoginFormData) => void }) {
+function LoginForm({ onSubmit, onForgotPassword }: { onSubmit: (data: LoginFormData) => void; onForgotPassword: () => void }) {
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
@@ -120,6 +137,82 @@ function LoginForm({ onSubmit }: { onSubmit: (data: LoginFormData) => void }) {
         />
         <Button type="submit" className="w-full">
           Login
+        </Button>
+        <button
+          type="button"
+          onClick={onForgotPassword}
+          className="w-full text-sm text-primary hover:underline"
+        >
+          Forgot your password?
+        </button>
+      </form>
+    </Form>
+  );
+}
+
+function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
+  const { toast } = useToast();
+  const [submitted, setSubmitted] = useState(false);
+  
+  const form = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: "" },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (data: ForgotPasswordFormData) => {
+      const res = await apiRequest("POST", "/api/forgot-password", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      setSubmitted(true);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (submitted) {
+    return (
+      <div className="space-y-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          If an account with that email exists, we've sent a password reset link. Please check your inbox.
+        </p>
+        <Button variant="outline" onClick={onBack} className="w-full">
+          Back to Login
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Enter your email address and we'll send you a link to reset your password.
+        </p>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="Enter your email" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full" disabled={mutation.isPending}>
+          {mutation.isPending ? "Sending..." : "Send Reset Link"}
+        </Button>
+        <Button type="button" variant="outline" onClick={onBack} className="w-full">
+          Back to Login
         </Button>
       </form>
     </Form>

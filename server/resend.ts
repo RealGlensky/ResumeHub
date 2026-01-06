@@ -41,10 +41,21 @@ export async function getUncachableResendClient() {
   };
 }
 
-export async function sendPasswordResetEmail(email: string, resetToken: string, firstName: string) {
+export async function sendPasswordResetEmail(email: string, resetToken: string, firstName: string, baseUrl?: string) {
   const { client, fromEmail } = await getUncachableResendClient();
   
-  const resetLink = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/reset-password?token=${resetToken}`;
+  let appUrl = baseUrl;
+  if (!appUrl) {
+    if (process.env.REPLIT_DEV_DOMAIN) {
+      appUrl = 'https://' + process.env.REPLIT_DEV_DOMAIN;
+    } else if (process.env.REPLIT_DEPLOYMENT_DOMAIN) {
+      appUrl = 'https://' + process.env.REPLIT_DEPLOYMENT_DOMAIN;
+    } else {
+      appUrl = 'http://localhost:5000';
+    }
+  }
+  
+  const resetLink = `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
   
   await client.emails.send({
     from: fromEmail,
