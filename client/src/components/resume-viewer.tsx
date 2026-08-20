@@ -113,7 +113,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-4xl w-full h-[90vh]">
+        <DialogContent className="max-w-none w-screen h-screen top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col">
           <DialogTitle className="flex justify-between items-center">
             <span className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
