@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "./comment-section";
 import type { Resume } from "@db/schema";
 import * as pdfjsLib from 'pdfjs-dist';
+import { cn } from "@/lib/utils";
 
 // Configure worker
 const workerSrc = new URL(
@@ -26,6 +27,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [loadError, setLoadError] = useState(false);
   const [numPages, setNumPages] = useState(0);
   const [showComments, setShowComments] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
 
@@ -106,14 +108,28 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
           setIsOpen(true);
           setIsLoading(true);
           setLoadError(false);
+          setIsFullscreen(false);
         }}
       >
         <FileText className="h-4 w-4" />
         View Resume
       </Button>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-none w-screen h-screen top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col">
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (!open) setIsFullscreen(false);
+        }}
+      >
+        <DialogContent
+          className={cn(
+            "flex flex-col",
+            isFullscreen
+              ? "max-w-none w-screen h-screen top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none"
+              : "max-w-4xl w-full h-[90vh]"
+          )}
+        >
           <DialogTitle className="flex justify-between items-center">
             <span className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -151,7 +167,11 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
                       <Skeleton className="w-full h-full" />
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div
+                      className={cn("space-y-4", isFullscreen ? "cursor-zoom-out" : "cursor-zoom-in")}
+                      onClick={() => setIsFullscreen((prev) => !prev)}
+                      title={isFullscreen ? "Click to shrink" : "Click to expand"}
+                    >
                       {Array.from({ length: numPages }, (_, i) => (
                         <div key={i} className="flex justify-center">
                           <canvas
