@@ -27,6 +27,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [showComments, setShowComments] = useState(false);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
+  const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
 
   // Get the absolute URL for the resume file
   const fileUrl = resume.fileUrl.startsWith('http') 
@@ -51,27 +52,11 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
 
         const loadingTask = pdfjsLib.getDocument({ data: pdfData });
         const pdf = await loadingTask.promise;
+        pdfDocRef.current = pdf;
+        // Size the ref array before the canvases mount, so the ref
+        // callbacks below aren't clobbered by a later reset.
+        canvasRefs.current = Array(pdf.numPages).fill(null);
         setNumPages(pdf.numPages);
-
-        // Pre-render all pages
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          const canvas = canvasRefs.current[pageNum - 1];
-
-          if (canvas) {
-            const viewport = page.getViewport({ scale: 1.5 });
-            const context = canvas.getContext('2d');
-
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
-            await page.render({
-              canvasContext: context!,
-              viewport: viewport
-            }).promise;
-          }
-        }
-
         setIsLoading(false);
       } catch (error) {
         console.error('Error loading PDF:', error);
@@ -83,10 +68,33 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
     loadPDF();
   }, [isOpen, fileUrl]);
 
-  // Update canvas refs array when numPages changes
+  // Render pages once the canvas elements have actually mounted
   useEffect(() => {
-    canvasRefs.current = Array(numPages).fill(null);
-  }, [numPages]);
+    if (isLoading || loadError || !pdfDocRef.current) return;
+
+    const renderPages = async () => {
+      const pdf = pdfDocRef.current!;
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const canvas = canvasRefs.current[pageNum - 1];
+
+        if (canvas) {
+          const viewport = page.getViewport({ scale: 1.5 });
+          const context = canvas.getContext('2d');
+
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          await page.render({
+            canvasContext: context!,
+            viewport: viewport
+          }).promise;
+        }
+      }
+    };
+
+    renderPages();
+  }, [isLoading, loadError, numPages]);
 
   return (
     <>
