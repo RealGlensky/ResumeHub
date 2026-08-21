@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "./comment-section";
 import type { Resume } from "@db/schema";
 import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from "mammoth";
 import { cn } from "@/lib/utils";
 
 // Configure worker
@@ -28,13 +29,16 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [showComments, setShowComments] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [docxHtml, setDocxHtml] = useState<string | null>(null);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
 
   // Get the absolute URL for the resume file
-  const fileUrl = resume.fileUrl.startsWith('http') 
-    ? resume.fileUrl 
+  const fileUrl = resume.fileUrl.startsWith('http')
+    ? resume.fileUrl
     : `${window.location.origin}${resume.fileUrl}`;
+
+  const isDocx = fileUrl.toLowerCase().endsWith('.docx');
 
   const handleDownload = () => {
     window.open(fileUrl, '_blank');
@@ -42,6 +46,23 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
 
   useEffect(() => {
     if (!isOpen) return;
+
+    const loadDocx = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(false);
+
+        const response = await fetch(fileUrl);
+        const docxData = await response.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer: docxData });
+        setDocxHtml(result.value);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading DOCX:', error);
+        setLoadError(true);
+        setIsLoading(false);
+      }
+    };
 
     const loadPDF = async () => {
       try {
@@ -67,12 +88,16 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
       }
     };
 
-    loadPDF();
-  }, [isOpen, fileUrl]);
+    if (isDocx) {
+      loadDocx();
+    } else {
+      loadPDF();
+    }
+  }, [isOpen, fileUrl, isDocx]);
 
-  // Render pages once the canvas elements have actually mounted
+  // Render PDF pages once the canvas elements have actually mounted
   useEffect(() => {
-    if (isLoading || loadError || !pdfDocRef.current) return;
+    if (isDocx || isLoading || loadError || !pdfDocRef.current) return;
 
     const renderPages = async () => {
       const pdf = pdfDocRef.current!;
@@ -96,7 +121,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
     };
 
     renderPages();
-  }, [isLoading, loadError, numPages]);
+  }, [isDocx, isLoading, loadError, numPages]);
 
   return (
     <>
@@ -158,7 +183,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
               {loadError ? (
                 <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
                   <AlertCircle className="h-5 w-5" />
-                  Failed to load PDF. Please try downloading it directly.
+                  Failed to load document. Please try downloading it directly.
                 </div>
               ) : (
                 <>
@@ -166,6 +191,16 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
                     <div className="flex items-center justify-center h-full">
                       <Skeleton className="w-full h-full" />
                     </div>
+                  ) : isDocx ? (
+                    <div
+                      className={cn(
+                        "prose prose-sm max-w-3xl mx-auto bg-white p-8 shadow-lg",
+                        isFullscreen ? "cursor-zoom-out" : "cursor-zoom-in"
+                      )}
+                      onClick={() => setIsFullscreen((prev) => !prev)}
+                      title={isFullscreen ? "Click to shrink" : "Click to expand"}
+                      dangerouslySetInnerHTML={{ __html: docxHtml ?? "" }}
+                    />
                   ) : (
                     <div
                       className={cn("space-y-4", isFullscreen ? "cursor-zoom-out" : "cursor-zoom-in")}

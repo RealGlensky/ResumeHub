@@ -66,6 +66,16 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // 'comment' | 'connection_request' | 'connection_accepted'
+  message: text("message").notNull(),
+  link: text("link"),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
@@ -82,6 +92,11 @@ export const userRelations = relations(users, ({ many }) => ({
   receivedInvitations: many(networkInvitations, { relationName: "receiver_invitations", references: [users.id], foreignKey: networkInvitations.receiverId }),
   connections1: many(networkConnections, { relationName: "user_connections_1", references: [users.id], foreignKey: networkConnections.userId1 }),
   connections2: many(networkConnections, { relationName: "user_connections_2", references: [users.id], foreignKey: networkConnections.userId2 }),
+  notifications: many(notifications),
+}));
+
+export const notificationRelations = relations(notifications, ({ one }) => ({
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
 }));
 
 export const resumeRelations = relations(resumes, ({ one, many }) => ({
@@ -140,6 +155,7 @@ export const insertCommentSchema = createInsertSchema(comments);
 export const insertNetworkInvitationSchema = createInsertSchema(networkInvitations);
 export const insertNetworkConnectionSchema = createInsertSchema(networkConnections);
 export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens);
+export const insertNotificationSchema = createInsertSchema(notifications);
 
 // Type definitions
 export type InsertUser = typeof users.$inferInsert;
@@ -150,3 +166,4 @@ export type Comment = typeof comments.$inferSelect;
 export type NetworkInvitation = typeof networkInvitations.$inferSelect;
 export type NetworkConnection = typeof networkConnections.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

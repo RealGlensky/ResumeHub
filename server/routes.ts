@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { resumes, jobOffers, comments, networkInvitations, networkConnections, users, passwordResetTokens, passwordSchema } from "@db/schema";
+import { resumes, jobOffers, comments, networkInvitations, networkConnections, users, passwordResetTokens, passwordSchema, notifications } from "@db/schema";
 import { randomBytes } from "crypto";
 import { sendPasswordResetEmail } from "./resend";
 import { eq, and, or, desc, inArray, not, ilike, exists, sql } from "drizzle-orm";
@@ -62,18 +62,27 @@ const storage = multer.diskStorage({
   }
 });
 
+const ALLOWED_RESUME_MIMETYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+];
+
 const upload = multer({
   storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: function (req, file, cb) {
-    if (file.mimetype !== 'application/pdf') {
-      return cb(new Error('Only PDF files are allowed'));
+    if (!ALLOWED_RESUME_MIMETYPES.includes(file.mimetype)) {
+      return cb(new Error('Only PDF and DOCX files are allowed'));
     }
     cb(null, true);
   }
 });
+
+async function createNotification(userId: number, type: string, message: string, link?: string) {
+  await db.insert(notifications).values({ userId, type, message, link });
+}
 
 export function registerRoutes(app: Express): Server {
   // Configure body-parser to handle larger payloads
@@ -720,6 +729,34 @@ export function registerRoutes(app: Express): Server {
       })
       .returning();
 
+    // Notify the resume owner about the new comment
+    if (resume.userId !== req.user.id) {
+      await createNotification(
+        resume.userId,
+        'comment',
+        `${req.user.username} commented on your resume "${resume.title}"`,
+        '/'
+      );
+    }
+
+    // Notify the parent comment's author if this is a reply
+    if (parentId) {
+      const [parentComment] = await db
+        .select()
+        .from(comments)
+        .where(eq(comments.id, parentId))
+        .limit(1);
+
+      if (parentComment && parentComment.userId !== req.user.id && parentComment.userId !== resume.userId) {
+        await createNotification(
+          parentComment.userId,
+          'comment',
+          `${req.user.username} replied to your comment on "${resume.title}"`,
+          '/'
+        );
+      }
+    }
+
     res.json(comment);
   });
 
@@ -915,6 +952,13 @@ export function registerRoutes(app: Express): Server {
       })
       .returning();
 
+    await createNotification(
+      receiverId,
+      'connection_request',
+      `${req.user.username} sent you a connection request`,
+      '/network'
+    );
+
     res.json(invitation);
   });
 
@@ -1069,6 +1113,13 @@ export function registerRoutes(app: Express): Server {
             userId1: invitation.senderId,
             userId2: invitation.receiverId,
           });
+
+        await createNotification(
+          invitation.senderId,
+          'connection_accepted',
+          `${req.user.username} accepted your connection request`,
+          '/network'
+        );
       }
 
       // Update invitation status
@@ -1379,6 +1430,67 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error removing connection:', error);
       res.status(500).json({ error: 'Failed to remove connection' });
+    }
+  });
+
+  // Notification routes
+  app.get("/api/notifications", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .orderBy(desc(notifications.createdAt))
+        .limit(50);
+
+      res.json(userNotifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ error: 'Failed to fetch notifications' });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+      const [notification] = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.id, parseInt(req.params.id)))
+        .limit(1);
+
+      if (!notification) return res.status(404).json({ error: 'Notification not found' });
+      if (notification.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+
+      const [updatedNotification] = await db
+        .update(notifications)
+        .set({ isRead: true })
+        .where(eq(notifications.id, notification.id))
+        .returning();
+
+      res.json(updatedNotification);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+  });
+
+  app.post("/api/notifications/read-all", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+      await db
+        .update(notifications)
+        .set({ isRead: true })
+        .where(and(eq(notifications.userId, req.user.id), eq(notifications.isRead, false)));
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      res.status(500).json({ error: 'Failed to mark all notifications as read' });
     }
   });
 

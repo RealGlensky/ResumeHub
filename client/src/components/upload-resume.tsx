@@ -133,7 +133,7 @@ export function UploadResume() {
                   <div className="space-y-2">
                     <Input
                       type="file"
-                      accept=".pdf"
+                      accept=".pdf,.docx"
                       onChange={(e) => {
                         const files = e.target.files;
                         if (files?.length) {
