@@ -51,3 +51,6 @@ waitForPort = 5000
 
 [agent]
 integrations = ["resend:1.0.0"]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-9f4f5a6f-78a3-4b4e-bbee-614bb56c76fe"
