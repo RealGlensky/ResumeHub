@@ -27,3 +27,8 @@ export async function deleteObject(objectName: string): Promise<void> {
     throw new Error(`Failed to delete ${objectName}: ${result.error.message}`);
   }
 }
+
+export async function objectExists(objectName: string): Promise<boolean> {
+  const result = await getClient().exists(objectName);
+  return result.ok && result.value;
+}
