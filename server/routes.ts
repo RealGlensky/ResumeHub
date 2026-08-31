@@ -13,25 +13,12 @@ import fs from "fs";
 import express from "express";
 import { comparePasswords, hashPassword } from './auth';
 import { log } from './vite';
+import { uploadBuffer, downloadStream, deleteObject } from './storage';
 
-// Configure multer for handling image uploads
-const imageStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(process.cwd(), 'uploads', 'profile-pictures');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-// Update the multer configuration for profile pictures
+// Files are received into memory, then pushed to Replit Object Storage
+// (see server/storage.ts) so they survive Autoscale deployment rebuilds.
 const imageUpload = multer({
-  storage: imageStorage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 20 * 1024 * 1024 // Increased to 20MB limit
   },
@@ -45,30 +32,13 @@ const imageUpload = multer({
   }
 });
 
-// Configure multer for handling file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(process.cwd(), 'uploads');
-    // Ensure uploads directory exists
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    // Generate unique filename
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
 const ALLOWED_RESUME_MIMETYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
 ];
 
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
@@ -80,6 +50,20 @@ const upload = multer({
   }
 });
 
+const CONTENT_TYPE_BY_EXT: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+};
+
+function objectKeyFromFileUrl(fileUrl: string): string {
+  return fileUrl.replace(/^\/api\/files\//, '');
+}
+
 async function createNotification(userId: number, type: string, message: string, link?: string) {
   await db.insert(notifications).values({ userId, type, message, link });
 }
@@ -89,8 +73,22 @@ export function registerRoutes(app: Express): Server {
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-  // Serve uploaded files statically
+  // Serve any files still stored on local disk (pre-migration).
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+  // Serve files uploaded to Object Storage
+  app.get('/api/files/:key', (req, res) => {
+    const { key } = req.params;
+    const ext = path.extname(key).toLowerCase();
+    res.setHeader('Content-Type', CONTENT_TYPE_BY_EXT[ext] || 'application/octet-stream');
+
+    const stream = downloadStream(key);
+    stream.on('error', (error) => {
+      console.error('Error streaming file:', key, error);
+      if (!res.headersSent) res.status(404).json({ error: 'File not found' });
+    });
+    stream.pipe(res);
+  });
 
   setupAuth(app);
 
@@ -103,8 +101,10 @@ export function registerRoutes(app: Express): Server {
       const { title, isPublic, accessType } = req.body;
       if (!title) return res.status(400).json({ error: 'Title is required' });
 
-      // Generate the file URL
-      const fileUrl = `/uploads/${req.file.filename}`;
+      // Upload to Object Storage and record its serving URL
+      const objectKey = `resume-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(req.file.originalname)}`;
+      await uploadBuffer(objectKey, req.file.buffer);
+      const fileUrl = `/api/files/${objectKey}`;
 
       // Set default accessType to connections if not provided
       const resumeAccessType = accessType || 'connections';
@@ -231,11 +231,16 @@ export function registerRoutes(app: Express): Server {
 
       // Delete the resume file if it exists
       if (resume.fileUrl) {
-        const filePath = path.join(process.cwd(), resume.fileUrl.substring(1)); //remove leading slash
         try {
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-            log(`Successfully deleted resume file: ${filePath}`);
+          if (resume.fileUrl.startsWith('/api/files/')) {
+            await deleteObject(objectKeyFromFileUrl(resume.fileUrl));
+            log(`Successfully deleted resume file from Object Storage: ${resume.fileUrl}`);
+          } else {
+            const filePath = path.join(process.cwd(), resume.fileUrl.substring(1)); //remove leading slash
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+              log(`Successfully deleted resume file: ${filePath}`);
+            }
           }
         } catch (fileError) {
           console.error('Error deleting resume file:', fileError);
@@ -419,13 +424,23 @@ export function registerRoutes(app: Express): Server {
       if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-      const fileUrl = `/uploads/profile-pictures/${req.file.filename}`;
+      const objectKey = `profile-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(req.file.originalname)}`;
+      await uploadBuffer(objectKey, req.file.buffer);
+      const fileUrl = `/api/files/${objectKey}`;
 
       // Delete old profile picture if it exists
       if (req.user.profilePictureUrl) {
-        const oldFilePath = path.join(process.cwd(), req.user.profilePictureUrl.substring(1));
-        if (fs.existsSync(oldFilePath)) {
-          fs.unlinkSync(oldFilePath);
+        try {
+          if (req.user.profilePictureUrl.startsWith('/api/files/')) {
+            await deleteObject(objectKeyFromFileUrl(req.user.profilePictureUrl));
+          } else {
+            const oldFilePath = path.join(process.cwd(), req.user.profilePictureUrl.substring(1));
+            if (fs.existsSync(oldFilePath)) {
+              fs.unlinkSync(oldFilePath);
+            }
+          }
+        } catch (error) {
+          console.error('Error deleting old profile picture:', error);
         }
       }
 

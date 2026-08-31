@@ -2,6 +2,15 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+// The Object Storage SDK fires an unawaited request to Replit's storage
+// sidecar from its constructor; if that sidecar isn't reachable (Object
+// Storage not yet enabled for this Repl, or running outside Replit), it
+// otherwise crashes the whole process instead of failing the one request
+// that triggered it.
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled rejection (continuing):", error);
+});
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
