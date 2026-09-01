@@ -11,3 +11,39 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* pdf.js text-layer overlay: an invisible, selectable text layer positioned
+   on top of the rendered canvas so PDF text can be highlighted like DOCX's
+   real HTML. Minimal subset of pdfjs-dist/web/pdf_viewer.css. */
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-size-adjust: none;
+  transform-origin: 0 0;
+  z-index: 1;
+}
+
+.textLayer span,
+.textLayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.resume-highlight {
+  background-color: rgba(250, 204, 21, 0.4);
+  cursor: pointer;
+}
+
+.resume-highlight[data-status="accepted"] {
+  background-color: rgba(74, 222, 128, 0.4);
+}
+
+.resume-highlight[data-status="rejected"] {
+  background-color: rgba(248, 113, 113, 0.3);
+  text-decoration: line-through;
+}

@@ -76,6 +76,21 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const highlights = pgTable("highlights", {
+  id: serial("id").primaryKey(),
+  resumeId: uuid("resume_id").notNull().references(() => resumes.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  pageNumber: integer("page_number"), // PDF page (1-indexed); null for DOCX
+  startOffset: integer("start_offset").notNull(), // char offset into that page/document's plain text
+  endOffset: integer("end_offset").notNull(),
+  quotedText: text("quoted_text").notNull(),
+  comment: text("comment").notNull(),
+  suggestedText: text("suggested_text"), // present = "suggest replacing the quoted text with this"
+  status: text("status").notNull().default('open'), // 'open' | 'accepted' | 'rejected'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
@@ -103,6 +118,12 @@ export const resumeRelations = relations(resumes, ({ one, many }) => ({
   user: one(users, { fields: [resumes.userId], references: [users.id] }),
   jobOffers: many(jobOffers),
   comments: many(comments),
+  highlights: many(highlights),
+}));
+
+export const highlightRelations = relations(highlights, ({ one }) => ({
+  user: one(users, { fields: [highlights.userId], references: [users.id] }),
+  resume: one(resumes, { fields: [highlights.resumeId], references: [resumes.id] }),
 }));
 
 export const networkInvitationRelations = relations(networkInvitations, ({ one }) => ({
@@ -156,6 +177,7 @@ export const insertNetworkInvitationSchema = createInsertSchema(networkInvitatio
 export const insertNetworkConnectionSchema = createInsertSchema(networkConnections);
 export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens);
 export const insertNotificationSchema = createInsertSchema(notifications);
+export const insertHighlightSchema = createInsertSchema(highlights);
 
 // Type definitions
 export type InsertUser = typeof users.$inferInsert;
@@ -167,3 +189,4 @@ export type NetworkInvitation = typeof networkInvitations.$inferSelect;
 export type NetworkConnection = typeof networkConnections.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type Highlight = typeof highlights.$inferSelect;

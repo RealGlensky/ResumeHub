@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { resumes, jobOffers, comments, networkInvitations, networkConnections, users, passwordResetTokens, passwordSchema, notifications } from "@db/schema";
+import { resumes, jobOffers, comments, networkInvitations, networkConnections, users, passwordResetTokens, passwordSchema, notifications, highlights } from "@db/schema";
 import { randomBytes } from "crypto";
 import { sendPasswordResetEmail } from "./resend";
 import { eq, and, or, desc, inArray, not, ilike, exists, sql } from "drizzle-orm";
@@ -77,6 +77,29 @@ async function deleteStoredFile(fileUrl: string): Promise<void> {
 
 async function createNotification(userId: number, type: string, message: string, link?: string) {
   await db.insert(notifications).values({ userId, type, message, link });
+}
+
+// Shared read-access rule for a resume's owner-only content (comments,
+// highlights): the owner can always see it; otherwise the resume must be
+// public, and either open to everyone or the viewer must be a connection.
+async function canViewResume(resume: { userId: number; isPublic: boolean | null; accessType: string }, user: { id: number } | undefined): Promise<boolean> {
+  if (user && resume.userId === user.id) return true;
+  if (!resume.isPublic) return false;
+  if (resume.accessType === 'everyone') return true;
+  if (!user) return false;
+
+  const [connection] = await db
+    .select()
+    .from(networkConnections)
+    .where(
+      or(
+        and(eq(networkConnections.userId1, user.id), eq(networkConnections.userId2, resume.userId)),
+        and(eq(networkConnections.userId1, resume.userId), eq(networkConnections.userId2, user.id))
+      )
+    )
+    .limit(1);
+
+  return !!connection;
 }
 
 export function registerRoutes(app: Express): Server {
@@ -969,6 +992,178 @@ export function registerRoutes(app: Express): Server {
       console.error('Error deleting comment:', error);
       res.status(500).json({ error: 'Failed to delete comment' });
     }
+  });
+
+  // Highlight routes (text-anchored comments and suggested edits)
+  app.post("/api/resumes/:id/highlights", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.id))
+      .limit(1);
+
+    if (!resume) return res.sendStatus(404);
+
+    // Only allow highlights if user is owner or resume is in collaborate mode
+    if (resume.userId !== req.user.id && resume.mode !== 'collaborate') {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    const { pageNumber, startOffset, endOffset, quotedText, comment, suggestedText } = req.body;
+    if (startOffset == null || endOffset == null || !quotedText || !comment) {
+      return res.status(400).json({ error: "startOffset, endOffset, quotedText, and comment are required" });
+    }
+
+    const [highlight] = await db
+      .insert(highlights)
+      .values({
+        resumeId: req.params.id,
+        userId: req.user.id,
+        pageNumber: pageNumber ?? null,
+        startOffset,
+        endOffset,
+        quotedText,
+        comment,
+        suggestedText: suggestedText || null,
+      })
+      .returning();
+
+    if (resume.userId !== req.user.id) {
+      await createNotification(
+        resume.userId,
+        'highlight',
+        suggestedText
+          ? `${req.user.username} suggested an edit on your resume "${resume.title}"`
+          : `${req.user.username} commented on a highlight in your resume "${resume.title}"`,
+        '/'
+      );
+    }
+
+    res.json(highlight);
+  });
+
+  app.get("/api/resumes/:id/highlights", async (req, res) => {
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.id))
+      .limit(1);
+
+    if (!resume) return res.sendStatus(404);
+    if (!(await canViewResume(resume, req.user))) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    const resumeHighlights = await db
+      .select({
+        id: highlights.id,
+        resumeId: highlights.resumeId,
+        userId: highlights.userId,
+        username: users.username,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        pageNumber: highlights.pageNumber,
+        startOffset: highlights.startOffset,
+        endOffset: highlights.endOffset,
+        quotedText: highlights.quotedText,
+        comment: highlights.comment,
+        suggestedText: highlights.suggestedText,
+        status: highlights.status,
+        createdAt: highlights.createdAt,
+        updatedAt: highlights.updatedAt,
+      })
+      .from(highlights)
+      .leftJoin(users, eq(highlights.userId, users.id))
+      .where(eq(highlights.resumeId, req.params.id))
+      .orderBy(highlights.createdAt);
+
+    res.json(resumeHighlights);
+  });
+
+  app.patch("/api/resumes/:resumeId/highlights/:highlightId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    const highlightId = parseInt(req.params.highlightId);
+    const [existingHighlight] = await db
+      .select()
+      .from(highlights)
+      .where(eq(highlights.id, highlightId))
+      .limit(1);
+
+    if (!existingHighlight) return res.sendStatus(404);
+    if (existingHighlight.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+
+    const { comment, suggestedText } = req.body;
+    const [updatedHighlight] = await db
+      .update(highlights)
+      .set({
+        comment: comment ?? existingHighlight.comment,
+        suggestedText: suggestedText !== undefined ? suggestedText || null : existingHighlight.suggestedText,
+        updatedAt: new Date(),
+      })
+      .where(eq(highlights.id, highlightId))
+      .returning();
+
+    res.json(updatedHighlight);
+  });
+
+  // Accept/reject a suggestion -- only the resume owner can resolve suggestions on their own resume
+  app.patch("/api/resumes/:resumeId/highlights/:highlightId/status", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    const { status } = req.body;
+    if (!['open', 'accepted', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.resumeId))
+      .limit(1);
+
+    if (!resume) return res.status(404).json({ error: "Resume not found" });
+    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+
+    const highlightId = parseInt(req.params.highlightId);
+    const [updatedHighlight] = await db
+      .update(highlights)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(highlights.id, highlightId))
+      .returning();
+
+    if (!updatedHighlight) return res.sendStatus(404);
+    res.json(updatedHighlight);
+  });
+
+  app.delete("/api/resumes/:resumeId/highlights/:highlightId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    const highlightId = parseInt(req.params.highlightId);
+    const [existingHighlight] = await db
+      .select()
+      .from(highlights)
+      .where(eq(highlights.id, highlightId))
+      .limit(1);
+
+    if (!existingHighlight) return res.status(404).json({ error: "Highlight not found" });
+
+    const [resume] = await db
+      .select()
+      .from(resumes)
+      .where(eq(resumes.id, req.params.resumeId))
+      .limit(1);
+
+    if (!resume) return res.status(404).json({ error: "Resume not found" });
+
+    if (existingHighlight.userId !== req.user.id && resume.userId !== req.user.id) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    await db.delete(highlights).where(eq(highlights.id, highlightId));
+    res.json({ message: "Highlight deleted successfully" });
   });
 
   // Network routes
