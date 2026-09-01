@@ -64,6 +64,17 @@ function objectKeyFromFileUrl(fileUrl: string): string {
   return fileUrl.replace(/^\/api\/files\//, '');
 }
 
+async function deleteStoredFile(fileUrl: string): Promise<void> {
+  if (fileUrl.startsWith('/api/files/')) {
+    await deleteObject(objectKeyFromFileUrl(fileUrl));
+  } else {
+    const filePath = path.join(process.cwd(), fileUrl.substring(1)); // remove leading slash
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+}
+
 async function createNotification(userId: number, type: string, message: string, link?: string) {
   await db.insert(notifications).values({ userId, type, message, link });
 }
@@ -124,6 +135,46 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error uploading resume:', error);
       res.status(500).json({ error: 'Failed to upload resume' });
+    }
+  });
+
+  // Replace a resume's underlying file while keeping its comments/job offers/settings
+  app.patch("/api/resumes/:id/file", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+      const [resume] = await db
+        .select()
+        .from(resumes)
+        .where(eq(resumes.id, req.params.id))
+        .limit(1);
+
+      if (!resume) return res.status(404).json({ error: "Resume not found" });
+      if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+
+      const objectKey = `resume-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(req.file.originalname)}`;
+      await uploadBuffer(objectKey, req.file.buffer);
+      const fileUrl = `/api/files/${objectKey}`;
+
+      if (resume.fileUrl) {
+        try {
+          await deleteStoredFile(resume.fileUrl);
+        } catch (fileError) {
+          console.error('Error deleting old resume file:', fileError);
+        }
+      }
+
+      const [updatedResume] = await db
+        .update(resumes)
+        .set({ fileUrl, updatedAt: new Date() })
+        .where(eq(resumes.id, req.params.id))
+        .returning();
+
+      res.json(updatedResume);
+    } catch (error) {
+      console.error('Error replacing resume file:', error);
+      res.status(500).json({ error: 'Failed to replace resume file' });
     }
   });
 
@@ -232,16 +283,8 @@ export function registerRoutes(app: Express): Server {
       // Delete the resume file if it exists
       if (resume.fileUrl) {
         try {
-          if (resume.fileUrl.startsWith('/api/files/')) {
-            await deleteObject(objectKeyFromFileUrl(resume.fileUrl));
-            log(`Successfully deleted resume file from Object Storage: ${resume.fileUrl}`);
-          } else {
-            const filePath = path.join(process.cwd(), resume.fileUrl.substring(1)); //remove leading slash
-            if (fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
-              log(`Successfully deleted resume file: ${filePath}`);
-            }
-          }
+          await deleteStoredFile(resume.fileUrl);
+          log(`Successfully deleted resume file: ${resume.fileUrl}`);
         } catch (fileError) {
           console.error('Error deleting resume file:', fileError);
           // Continue with database deletion even if file deletion fails
@@ -431,14 +474,7 @@ export function registerRoutes(app: Express): Server {
       // Delete old profile picture if it exists
       if (req.user.profilePictureUrl) {
         try {
-          if (req.user.profilePictureUrl.startsWith('/api/files/')) {
-            await deleteObject(objectKeyFromFileUrl(req.user.profilePictureUrl));
-          } else {
-            const oldFilePath = path.join(process.cwd(), req.user.profilePictureUrl.substring(1));
-            if (fs.existsSync(oldFilePath)) {
-              fs.unlinkSync(oldFilePath);
-            }
-          }
+          await deleteStoredFile(req.user.profilePictureUrl);
         } catch (error) {
           console.error('Error deleting old profile picture:', error);
         }

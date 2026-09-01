@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { resumes, users } from "../db/schema";
 import { objectExists } from "../server/storage";
@@ -9,13 +10,25 @@ function keyFromApiFilesUrl(url: string): string | null {
 async function main() {
   let missing = 0;
 
-  const allResumes = await db.select().from(resumes);
-  for (const resume of allResumes) {
+  const resumesWithOwner = await db
+    .select({
+      id: resumes.id,
+      title: resumes.title,
+      fileUrl: resumes.fileUrl,
+      ownerUsername: users.username,
+      ownerEmail: users.email,
+    })
+    .from(resumes)
+    .leftJoin(users, eq(resumes.userId, users.id));
+
+  for (const resume of resumesWithOwner) {
     const key = resume.fileUrl && keyFromApiFilesUrl(resume.fileUrl);
     if (!key) continue;
     if (!(await objectExists(key))) {
       missing++;
-      console.log(`MISSING FILE - resume ${resume.id} ("${resume.title}", owner user ${resume.userId}): ${resume.fileUrl}`);
+      console.log(
+        `MISSING FILE - resume ${resume.id} ("${resume.title}"), owner ${resume.ownerUsername} <${resume.ownerEmail}>: ${resume.fileUrl}`
+      );
     }
   }
 
@@ -25,7 +38,9 @@ async function main() {
     if (!key) continue;
     if (!(await objectExists(key))) {
       missing++;
-      console.log(`MISSING FILE - user ${user.id} (${user.username}) profile picture: ${user.profilePictureUrl}`);
+      console.log(
+        `MISSING FILE - user ${user.username} <${user.email}> profile picture: ${user.profilePictureUrl}`
+      );
     }
   }
 

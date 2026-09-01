@@ -6,7 +6,8 @@ import { Switch } from "@/components/ui/switch";
 import { JobOfferForm } from "./job-offer-form";
 import { CommentSection } from "./comment-section";
 import { ResumeViewer } from "./resume-viewer";
-import { Share2, FileText, Briefcase, UserPlus, MessageSquare, Trash2, EyeOff } from "lucide-react";
+import { ReplaceResumeFile } from "./replace-resume-file";
+import { Share2, FileText, Briefcase, UserPlus, MessageSquare, Trash2, EyeOff, RefreshCw } from "lucide-react";
 import type { Resume } from "@db/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
@@ -21,6 +22,7 @@ interface ResumeCardProps {
 
 function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isReplaceDialogOpen, setIsReplaceDialogOpen] = useState(false);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"offers" | "comments">("offers");
   
@@ -173,6 +175,19 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
           <div className="flex items-center gap-2">
             {isOwner && (
               <>
+                <Dialog open={isReplaceDialogOpen} onOpenChange={setIsReplaceDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" title="Replace file">
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <ReplaceResumeFile
+                      resumeId={resume.id}
+                      onDone={() => setIsReplaceDialogOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
                 <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="destructive" size="icon">
