@@ -7,6 +7,7 @@ import {
 import type { SelectUser, InsertUser } from "@db/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/analytics";
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      trackEvent("user_logged_in");
       // Clear all existing queries first
       queryClient.clear();
       // Set the user data
@@ -62,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
+      trackEvent("account_created");
       // Clear all existing queries first
       queryClient.clear();
       // Set the user data

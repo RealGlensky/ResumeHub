@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { Check, X, User, Mail, Briefcase, MapPin, User2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/analytics";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 type NetworkInvitation = {
@@ -76,6 +77,9 @@ export function NetworkManager() {
       return apiRequest("POST", `/api/network/invitations/${id}/${action}`);
     },
     onSuccess: (_, variables) => {
+      trackEvent("connection_invitation_responded", {
+        action: variables.action,
+      });
       toast({
         title: `Invitation ${variables.action}ed`,
         description: `You have successfully ${variables.action}ed the connection request.`,

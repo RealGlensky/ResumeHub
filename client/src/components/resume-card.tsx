@@ -13,6 +13,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import type { JobOffer } from "@db/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/analytics";
 
 interface ResumeCardProps {
   resume: Resume;
@@ -35,6 +36,10 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
       return apiRequest("DELETE", `/api/resumes/${resume.id}`);
     },
     onSuccess: () => {
+      trackEvent("resume_settings_updated", {
+        setting: "visibility",
+        value: resume.isPublic ? "private" : "public",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
       setIsDeleteDialogOpen(false);
@@ -80,6 +85,7 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
       return apiRequest("POST", "/api/network/invite", { receiverId });
     },
     onSuccess: () => {
+      trackEvent("connection_invitation_sent", { source: "resume_card" });
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
     },
   });
@@ -91,6 +97,10 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
       });
     },
     onSuccess: () => {
+      trackEvent("resume_settings_updated", {
+        setting: "mode",
+        value: resume.mode === "share" ? "collaborate" : "share",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
       toast({
@@ -115,6 +125,10 @@ function ResumeCard({ resume, user, ownerName }: ResumeCardProps) {
       });
     },
     onSuccess: () => {
+      trackEvent("resume_settings_updated", {
+        setting: "access",
+        value: resume.accessType === "connections" ? "everyone" : "connections",
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       queryClient.invalidateQueries({ queryKey: ["/api/network/resumes"] });
       toast({

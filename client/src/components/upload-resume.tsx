@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, AlertCircle } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -75,7 +76,16 @@ export function UploadResume() {
         xhr.send(formData);
       });
     },
-    onSuccess: () => {
+    onSuccess: (_, data) => {
+      const fileName = data.file[0]?.name ?? "";
+      const fileType = fileName.includes(".")
+        ? fileName.split(".").pop()?.toLowerCase() ?? "unknown"
+        : "unknown";
+      trackEvent("resume_uploaded", {
+        is_public: data.isPublic,
+        access_type: data.accessType,
+        file_type: fileType,
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       setUploadProgress(0);
       toast({

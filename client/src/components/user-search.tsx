@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { User, Mail, UserPlus, Briefcase, MapPin } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { trackEvent } from "@/lib/analytics";
 import { useToast } from "@/hooks/use-toast";
 
 type SearchResult = {
@@ -55,6 +56,7 @@ export function UserSearch() {
       return res.json();
     },
     onSuccess: () => {
+      trackEvent("connection_invitation_sent", { source: "user_search" });
       queryClient.invalidateQueries({ queryKey: ["/api/network/invitations"] });
       toast({
         title: "Invitation sent",

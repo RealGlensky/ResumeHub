@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { trackEvent } from "@/lib/analytics";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -271,7 +272,11 @@ export function CommentSection({ resumeId, resumeUserId }: { resumeId: string; r
       );
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      trackEvent("comment_created", {
+        kind: variables.parentId ? "reply" : "comment",
+        is_resume_owner: isResumeOwner,
+      });
       // Invalidate both the specific resume's comments and the resume itself
       queryClient.invalidateQueries({ queryKey: [`/api/resumes/${resumeId}/comments`] });
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });

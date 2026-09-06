@@ -12,6 +12,7 @@ import {
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { trackEvent } from "@/lib/analytics";
 
 type FormData = {
   company: string;
@@ -31,7 +32,8 @@ export function JobOfferForm({ resumeId }: { resumeId: string }) {
       );
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, data) => {
+      trackEvent("job_offer_created", { status: data.status });
       queryClient.invalidateQueries({ queryKey: [`/api/resumes/${resumeId}/offers`] });
     },
   });
