@@ -415,48 +415,51 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
               </div>
             )}
           </div>
+
+          {/* Rendered inside DialogContent (despite being position:fixed) so
+              Radix's Dialog doesn't treat clicks into it as "outside" the
+              dialog and dismiss/refocus away from the textarea. */}
+          {pendingSelection && (
+            <HighlightPopover
+              mode="create"
+              position={{ x: pendingSelection.x, y: pendingSelection.y }}
+              quotedText={pendingSelection.text}
+              isPending={createHighlight.isPending}
+              onCancel={() => {
+                setPendingSelection(null);
+                window.getSelection()?.removeAllRanges();
+              }}
+              onSubmit={({ comment, suggestedText }) =>
+                createHighlight.mutate({
+                  pageNumber: pendingSelection.pageNumber,
+                  startOffset: pendingSelection.start,
+                  endOffset: pendingSelection.end,
+                  quotedText: pendingSelection.text,
+                  comment,
+                  suggestedText,
+                })
+              }
+            />
+          )}
+
+          {viewingHighlight && (
+            <HighlightPopover
+              mode="view"
+              position={{ x: viewingHighlight.x, y: viewingHighlight.y }}
+              highlight={viewingHighlight.highlight}
+              canEdit={viewingHighlight.highlight.userId === user?.id}
+              canResolve={isOwner}
+              isPending={editHighlight.isPending || resolveHighlight.isPending || deleteHighlight.isPending}
+              onClose={() => setViewingHighlight(null)}
+              onSave={({ comment, suggestedText }) =>
+                editHighlight.mutate({ id: viewingHighlight.highlight.id, comment, suggestedText })
+              }
+              onDelete={() => deleteHighlight.mutate(viewingHighlight.highlight.id)}
+              onResolve={(status) => resolveHighlight.mutate({ id: viewingHighlight.highlight.id, status })}
+            />
+          )}
         </DialogContent>
       </Dialog>
-
-      {pendingSelection && (
-        <HighlightPopover
-          mode="create"
-          position={{ x: pendingSelection.x, y: pendingSelection.y }}
-          quotedText={pendingSelection.text}
-          isPending={createHighlight.isPending}
-          onCancel={() => {
-            setPendingSelection(null);
-            window.getSelection()?.removeAllRanges();
-          }}
-          onSubmit={({ comment, suggestedText }) =>
-            createHighlight.mutate({
-              pageNumber: pendingSelection.pageNumber,
-              startOffset: pendingSelection.start,
-              endOffset: pendingSelection.end,
-              quotedText: pendingSelection.text,
-              comment,
-              suggestedText,
-            })
-          }
-        />
-      )}
-
-      {viewingHighlight && (
-        <HighlightPopover
-          mode="view"
-          position={{ x: viewingHighlight.x, y: viewingHighlight.y }}
-          highlight={viewingHighlight.highlight}
-          canEdit={viewingHighlight.highlight.userId === user?.id}
-          canResolve={isOwner}
-          isPending={editHighlight.isPending || resolveHighlight.isPending || deleteHighlight.isPending}
-          onClose={() => setViewingHighlight(null)}
-          onSave={({ comment, suggestedText }) =>
-            editHighlight.mutate({ id: viewingHighlight.highlight.id, comment, suggestedText })
-          }
-          onDelete={() => deleteHighlight.mutate(viewingHighlight.highlight.id)}
-          onResolve={(status) => resolveHighlight.mutate({ id: viewingHighlight.highlight.id, status })}
-        />
-      )}
     </>
   );
 }
