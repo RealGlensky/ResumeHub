@@ -998,115 +998,130 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/resumes/:id/highlights", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
+    try {
+      const [resume] = await db
+        .select()
+        .from(resumes)
+        .where(eq(resumes.id, req.params.id))
+        .limit(1);
 
-    if (!resume) return res.sendStatus(404);
+      if (!resume) return res.sendStatus(404);
 
-    // Only allow highlights if user is owner or resume is in collaborate mode
-    if (resume.userId !== req.user.id && resume.mode !== 'collaborate') {
-      return res.status(403).json({ error: "Unauthorized" });
+      // Only allow highlights if user is owner or resume is in collaborate mode
+      if (resume.userId !== req.user.id && resume.mode !== 'collaborate') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const { pageNumber, startOffset, endOffset, quotedText, comment, suggestedText } = req.body;
+      if (startOffset == null || endOffset == null || !quotedText || !comment) {
+        return res.status(400).json({ error: "startOffset, endOffset, quotedText, and comment are required" });
+      }
+
+      const [highlight] = await db
+        .insert(highlights)
+        .values({
+          resumeId: req.params.id,
+          userId: req.user.id,
+          pageNumber: pageNumber ?? null,
+          startOffset,
+          endOffset,
+          quotedText,
+          comment,
+          suggestedText: suggestedText || null,
+        })
+        .returning();
+
+      if (resume.userId !== req.user.id) {
+        await createNotification(
+          resume.userId,
+          'highlight',
+          suggestedText
+            ? `${req.user.username} suggested an edit on your resume "${resume.title}"`
+            : `${req.user.username} commented on a highlight in your resume "${resume.title}"`,
+          '/'
+        );
+      }
+
+      res.json(highlight);
+    } catch (error) {
+      console.error('Error creating highlight:', error);
+      res.status(500).json({ error: 'Failed to create highlight' });
     }
-
-    const { pageNumber, startOffset, endOffset, quotedText, comment, suggestedText } = req.body;
-    if (startOffset == null || endOffset == null || !quotedText || !comment) {
-      return res.status(400).json({ error: "startOffset, endOffset, quotedText, and comment are required" });
-    }
-
-    const [highlight] = await db
-      .insert(highlights)
-      .values({
-        resumeId: req.params.id,
-        userId: req.user.id,
-        pageNumber: pageNumber ?? null,
-        startOffset,
-        endOffset,
-        quotedText,
-        comment,
-        suggestedText: suggestedText || null,
-      })
-      .returning();
-
-    if (resume.userId !== req.user.id) {
-      await createNotification(
-        resume.userId,
-        'highlight',
-        suggestedText
-          ? `${req.user.username} suggested an edit on your resume "${resume.title}"`
-          : `${req.user.username} commented on a highlight in your resume "${resume.title}"`,
-        '/'
-      );
-    }
-
-    res.json(highlight);
   });
 
   app.get("/api/resumes/:id/highlights", async (req, res) => {
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
+    try {
+      const [resume] = await db
+        .select()
+        .from(resumes)
+        .where(eq(resumes.id, req.params.id))
+        .limit(1);
 
-    if (!resume) return res.sendStatus(404);
-    if (!(await canViewResume(resume, req.user))) {
-      return res.status(403).json({ error: "Unauthorized" });
+      if (!resume) return res.sendStatus(404);
+      if (!(await canViewResume(resume, req.user))) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const resumeHighlights = await db
+        .select({
+          id: highlights.id,
+          resumeId: highlights.resumeId,
+          userId: highlights.userId,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          pageNumber: highlights.pageNumber,
+          startOffset: highlights.startOffset,
+          endOffset: highlights.endOffset,
+          quotedText: highlights.quotedText,
+          comment: highlights.comment,
+          suggestedText: highlights.suggestedText,
+          status: highlights.status,
+          createdAt: highlights.createdAt,
+          updatedAt: highlights.updatedAt,
+        })
+        .from(highlights)
+        .leftJoin(users, eq(highlights.userId, users.id))
+        .where(eq(highlights.resumeId, req.params.id))
+        .orderBy(highlights.createdAt);
+
+      res.json(resumeHighlights);
+    } catch (error) {
+      console.error('Error fetching highlights:', error);
+      res.status(500).json({ error: 'Failed to fetch highlights' });
     }
-
-    const resumeHighlights = await db
-      .select({
-        id: highlights.id,
-        resumeId: highlights.resumeId,
-        userId: highlights.userId,
-        username: users.username,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        pageNumber: highlights.pageNumber,
-        startOffset: highlights.startOffset,
-        endOffset: highlights.endOffset,
-        quotedText: highlights.quotedText,
-        comment: highlights.comment,
-        suggestedText: highlights.suggestedText,
-        status: highlights.status,
-        createdAt: highlights.createdAt,
-        updatedAt: highlights.updatedAt,
-      })
-      .from(highlights)
-      .leftJoin(users, eq(highlights.userId, users.id))
-      .where(eq(highlights.resumeId, req.params.id))
-      .orderBy(highlights.createdAt);
-
-    res.json(resumeHighlights);
   });
 
   app.patch("/api/resumes/:resumeId/highlights/:highlightId", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
-    const highlightId = parseInt(req.params.highlightId);
-    const [existingHighlight] = await db
-      .select()
-      .from(highlights)
-      .where(eq(highlights.id, highlightId))
-      .limit(1);
+    try {
+      const highlightId = parseInt(req.params.highlightId);
+      const [existingHighlight] = await db
+        .select()
+        .from(highlights)
+        .where(eq(highlights.id, highlightId))
+        .limit(1);
 
-    if (!existingHighlight) return res.sendStatus(404);
-    if (existingHighlight.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+      if (!existingHighlight) return res.sendStatus(404);
+      if (existingHighlight.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
 
-    const { comment, suggestedText } = req.body;
-    const [updatedHighlight] = await db
-      .update(highlights)
-      .set({
-        comment: comment ?? existingHighlight.comment,
-        suggestedText: suggestedText !== undefined ? suggestedText || null : existingHighlight.suggestedText,
-        updatedAt: new Date(),
-      })
-      .where(eq(highlights.id, highlightId))
-      .returning();
+      const { comment, suggestedText } = req.body;
+      const [updatedHighlight] = await db
+        .update(highlights)
+        .set({
+          comment: comment ?? existingHighlight.comment,
+          suggestedText: suggestedText !== undefined ? suggestedText || null : existingHighlight.suggestedText,
+          updatedAt: new Date(),
+        })
+        .where(eq(highlights.id, highlightId))
+        .returning();
 
-    res.json(updatedHighlight);
+      res.json(updatedHighlight);
+    } catch (error) {
+      console.error('Error updating highlight:', error);
+      res.status(500).json({ error: 'Failed to update highlight' });
+    }
   });
 
   // Accept/reject a suggestion -- only the resume owner can resolve suggestions on their own resume
@@ -1118,52 +1133,62 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).json({ error: "Invalid status" });
     }
 
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.resumeId))
-      .limit(1);
+    try {
+      const [resume] = await db
+        .select()
+        .from(resumes)
+        .where(eq(resumes.id, req.params.resumeId))
+        .limit(1);
 
-    if (!resume) return res.status(404).json({ error: "Resume not found" });
-    if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+      if (!resume) return res.status(404).json({ error: "Resume not found" });
+      if (resume.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
 
-    const highlightId = parseInt(req.params.highlightId);
-    const [updatedHighlight] = await db
-      .update(highlights)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(highlights.id, highlightId))
-      .returning();
+      const highlightId = parseInt(req.params.highlightId);
+      const [updatedHighlight] = await db
+        .update(highlights)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(highlights.id, highlightId))
+        .returning();
 
-    if (!updatedHighlight) return res.sendStatus(404);
-    res.json(updatedHighlight);
+      if (!updatedHighlight) return res.sendStatus(404);
+      res.json(updatedHighlight);
+    } catch (error) {
+      console.error('Error resolving highlight:', error);
+      res.status(500).json({ error: 'Failed to update highlight status' });
+    }
   });
 
   app.delete("/api/resumes/:resumeId/highlights/:highlightId", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
-    const highlightId = parseInt(req.params.highlightId);
-    const [existingHighlight] = await db
-      .select()
-      .from(highlights)
-      .where(eq(highlights.id, highlightId))
-      .limit(1);
+    try {
+      const highlightId = parseInt(req.params.highlightId);
+      const [existingHighlight] = await db
+        .select()
+        .from(highlights)
+        .where(eq(highlights.id, highlightId))
+        .limit(1);
 
-    if (!existingHighlight) return res.status(404).json({ error: "Highlight not found" });
+      if (!existingHighlight) return res.status(404).json({ error: "Highlight not found" });
 
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.resumeId))
-      .limit(1);
+      const [resume] = await db
+        .select()
+        .from(resumes)
+        .where(eq(resumes.id, req.params.resumeId))
+        .limit(1);
 
-    if (!resume) return res.status(404).json({ error: "Resume not found" });
+      if (!resume) return res.status(404).json({ error: "Resume not found" });
 
-    if (existingHighlight.userId !== req.user.id && resume.userId !== req.user.id) {
-      return res.status(403).json({ error: "Unauthorized" });
+      if (existingHighlight.userId !== req.user.id && resume.userId !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      await db.delete(highlights).where(eq(highlights.id, highlightId));
+      res.json({ message: "Highlight deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting highlight:', error);
+      res.status(500).json({ error: 'Failed to delete highlight' });
     }
-
-    await db.delete(highlights).where(eq(highlights.id, highlightId));
-    res.json({ message: "Highlight deleted successfully" });
   });
 
   // Network routes
