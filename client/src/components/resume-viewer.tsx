@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { FileText, AlertCircle, Download, MessageSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommentSection } from "./comment-section";
-import { HighlightPopover, type HighlightWithAuthor } from "./highlight-popover";
-import type { Resume } from "@db/schema";
+import { HighlightPopover } from "./highlight-popover";
+import type { Resume, Highlight } from "@db/schema";
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from "mammoth";
 import { cn } from "@/lib/utils";
@@ -36,8 +36,10 @@ interface PendingSelection {
   y: number;
 }
 
+type HighlightListItem = Highlight & { color: string; commentCount: number };
+
 interface ViewingHighlight {
-  highlight: HighlightWithAuthor;
+  highlight: HighlightListItem;
   x: number;
   y: number;
 }
@@ -72,29 +74,21 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
     window.open(fileUrl, '_blank');
   };
 
-  const { data: highlightList = [] } = useQuery<HighlightWithAuthor[]>({
+  const { data: highlightList = [] } = useQuery<HighlightListItem[]>({
     queryKey: [`/api/resumes/${resume.id}/highlights`],
     enabled: isOpen && canAnnotate,
   });
 
   const createHighlight = useMutation({
-    mutationFn: async (data: { pageNumber: number | null; startOffset: number; endOffset: number; quotedText: string; comment: string; suggestedText?: string }) => {
-      return apiRequest("POST", `/api/resumes/${resume.id}/highlights`, data);
+    mutationFn: async (data: { pageNumber: number | null; startOffset: number; endOffset: number; quotedText: string; comment: string; suggestedText?: string; isAnonymous?: boolean }) => {
+      const res = await apiRequest("POST", `/api/resumes/${resume.id}/highlights`, data);
+      return res.json() as Promise<{ highlight: Highlight; merged: boolean }>;
     },
-    onSuccess: () => {
+    onSuccess: ({ highlight }) => {
       queryClient.invalidateQueries({ queryKey: [`/api/resumes/${resume.id}/highlights`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/resumes/${resume.id}/comments?highlightId=${highlight.id}`] });
       setPendingSelection(null);
       window.getSelection()?.removeAllRanges();
-    },
-  });
-
-  const editHighlight = useMutation({
-    mutationFn: async ({ id, ...data }: { id: number; comment: string; suggestedText?: string }) => {
-      return apiRequest("PATCH", `/api/resumes/${resume.id}/highlights/${id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/resumes/${resume.id}/highlights`] });
-      setViewingHighlight(null);
     },
   });
 
@@ -108,7 +102,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
     },
   });
 
-  const deleteHighlight = useMutation({
+  const deleteHighlightAnchor = useMutation({
     mutationFn: async (id: number) => {
       return apiRequest("DELETE", `/api/resumes/${resume.id}/highlights/${id}`);
     },
@@ -223,7 +217,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
       clearHighlightMarks(container);
       applyHighlightMarks(
         container,
-        highlightList.map((h) => ({ id: h.id, start: h.startOffset, end: h.endOffset }))
+        highlightList.map((h) => ({ id: h.id, start: h.startOffset, end: h.endOffset, color: h.status === 'open' ? h.color : undefined }))
       );
       container.querySelectorAll<HTMLElement>('mark[data-highlight-id]').forEach((mark) => {
         const highlight = highlightList.find((h) => String(h.id) === mark.dataset.highlightId);
@@ -237,7 +231,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
         const pageHighlights = highlightList.filter((h) => h.pageNumber === pageNum);
         applyHighlightMarks(
           container,
-          pageHighlights.map((h) => ({ id: h.id, start: h.startOffset, end: h.endOffset }))
+          pageHighlights.map((h) => ({ id: h.id, start: h.startOffset, end: h.endOffset, color: h.status === 'open' ? h.color : undefined }))
         );
         container.querySelectorAll<HTMLElement>('mark[data-highlight-id]').forEach((mark) => {
           const highlight = pageHighlights.find((h) => String(h.id) === mark.dataset.highlightId);
@@ -429,7 +423,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
                 setPendingSelection(null);
                 window.getSelection()?.removeAllRanges();
               }}
-              onSubmit={({ comment, suggestedText }) =>
+              onSubmit={({ comment, suggestedText, isAnonymous }) =>
                 createHighlight.mutate({
                   pageNumber: pendingSelection.pageNumber,
                   startOffset: pendingSelection.start,
@@ -437,6 +431,7 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
                   quotedText: pendingSelection.text,
                   comment,
                   suggestedText,
+                  isAnonymous,
                 })
               }
             />
@@ -447,14 +442,13 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
               mode="view"
               position={{ x: viewingHighlight.x, y: viewingHighlight.y }}
               highlight={viewingHighlight.highlight}
-              canEdit={viewingHighlight.highlight.userId === user?.id}
+              resumeId={resume.id}
+              resumeUserId={resume.userId}
               canResolve={isOwner}
-              isPending={editHighlight.isPending || resolveHighlight.isPending || deleteHighlight.isPending}
+              canDeleteHighlight={isOwner || viewingHighlight.highlight.userId === user?.id}
+              isPending={resolveHighlight.isPending || deleteHighlightAnchor.isPending}
               onClose={() => setViewingHighlight(null)}
-              onSave={({ comment, suggestedText }) =>
-                editHighlight.mutate({ id: viewingHighlight.highlight.id, comment, suggestedText })
-              }
-              onDelete={() => deleteHighlight.mutate(viewingHighlight.highlight.id)}
+              onDeleteHighlight={() => deleteHighlightAnchor.mutate(viewingHighlight.highlight.id)}
               onResolve={(status) => resolveHighlight.mutate({ id: viewingHighlight.highlight.id, status })}
             />
           )}

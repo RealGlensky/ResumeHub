@@ -45,6 +45,78 @@ const passwordSchema = z.object({
 
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
+const HIGHLIGHT_COLOR_PALETTE = [
+  '#f59e0b', '#3b82f6', '#ec4899', '#10b981',
+  '#8b5cf6', '#f97316', '#06b6d4', '#ef4444',
+];
+
+function HighlightColorPicker() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const updateColorMutation = useMutation({
+    mutationFn: async (highlightColor: string | null) => {
+      const res = await apiRequest("PATCH", "/api/user/highlight-color", { highlightColor });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({ title: "Highlight color updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const current = user?.highlightColor ?? null;
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Highlight Color</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          The color your highlighted comments show up in on resumes you review. Leave unset to get an automatically assigned color.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          {HIGHLIGHT_COLOR_PALETTE.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => updateColorMutation.mutate(color)}
+              className="h-8 w-8 rounded-full border-2"
+              style={{ backgroundColor: color, borderColor: current === color ? 'black' : 'transparent' }}
+              aria-label={`Use ${color}`}
+              disabled={updateColorMutation.isPending}
+            />
+          ))}
+          <input
+            type="color"
+            value={current ?? '#f59e0b'}
+            onChange={(e) => updateColorMutation.mutate(e.target.value)}
+            className="h-8 w-8 rounded cursor-pointer border"
+            disabled={updateColorMutation.isPending}
+            aria-label="Custom color"
+          />
+          {current && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => updateColorMutation.mutate(null)}
+              disabled={updateColorMutation.isPending}
+            >
+              Reset to auto
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function PasswordChangeForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -466,6 +538,7 @@ export default function ProfilePage() {
           </Form>
         </CardContent>
       </Card>
+      <HighlightColorPicker />
       <PasswordChangeForm />
     </div>
   );

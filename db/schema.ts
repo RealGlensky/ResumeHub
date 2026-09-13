@@ -17,6 +17,7 @@ export const users = pgTable("users", {
   state: text("state"),
   country: text("country"),
   profilePictureUrl: text("profile_picture_url"),
+  highlightColor: text("highlight_color"), // hex color, e.g. "#f59e0b"; falls back to an auto-assigned color when unset
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -62,8 +63,12 @@ export const comments = pgTable("comments", {
   resumeId: uuid("resume_id").notNull().references(() => resumes.id),
   userId: integer("user_id").notNull().references(() => users.id),
   parentId: integer("parent_id").references(() => comments.id),
+  highlightId: integer("highlight_id").references(() => highlights.id), // set = this comment belongs to a highlight thread; null = resume-level comment
   content: text("content").notNull(),
+  suggestedText: text("suggested_text"), // present = "suggest replacing the highlighted text with this"
+  isAnonymous: boolean("is_anonymous").default(false), // hides the commenter's identity from everyone but the resume owner
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const notifications = pgTable("notifications", {
@@ -76,16 +81,17 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// A highlight anchors a text range to a comment thread (in `comments`, via
+// highlightId). Multiple people commenting on the same/overlapping range
+// share one highlight and one thread, rather than creating overlapping marks.
 export const highlights = pgTable("highlights", {
   id: serial("id").primaryKey(),
   resumeId: uuid("resume_id").notNull().references(() => resumes.id),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id), // original creator; also determines the highlight's color
   pageNumber: integer("page_number"), // PDF page (1-indexed); null for DOCX
   startOffset: integer("start_offset").notNull(), // char offset into that page/document's plain text
   endOffset: integer("end_offset").notNull(),
   quotedText: text("quoted_text").notNull(),
-  comment: text("comment").notNull(),
-  suggestedText: text("suggested_text"), // present = "suggest replacing the quoted text with this"
   status: text("status").notNull().default('open'), // 'open' | 'accepted' | 'rejected'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -121,9 +127,10 @@ export const resumeRelations = relations(resumes, ({ one, many }) => ({
   highlights: many(highlights),
 }));
 
-export const highlightRelations = relations(highlights, ({ one }) => ({
+export const highlightRelations = relations(highlights, ({ one, many }) => ({
   user: one(users, { fields: [highlights.userId], references: [users.id] }),
   resume: one(resumes, { fields: [highlights.resumeId], references: [resumes.id] }),
+  comments: many(comments),
 }));
 
 export const networkInvitationRelations = relations(networkInvitations, ({ one }) => ({
@@ -143,6 +150,7 @@ export const jobOfferRelations = relations(jobOffers, ({ one }) => ({
 export const commentRelations = relations(comments, ({ one, many }) => ({
   user: one(users, { fields: [comments.userId], references: [users.id] }),
   resume: one(resumes, { fields: [comments.resumeId], references: [resumes.id] }),
+  highlight: one(highlights, { fields: [comments.highlightId], references: [highlights.id] }),
   parent: one(comments, {
     fields: [comments.parentId],
     references: [comments.id],

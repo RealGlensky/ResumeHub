@@ -75,6 +75,7 @@ export interface HighlightRange {
   start: number;
   end: number;
   className?: string;
+  color?: string; // background-color override, e.g. the commenter's highlight color
 }
 
 // Wraps each range's text in a <mark data-highlight-id="..."> span. Applied
@@ -83,7 +84,7 @@ export interface HighlightRange {
 export function applyHighlightMarks(container: HTMLElement, ranges: HighlightRange[]): void {
   const sorted = [...ranges].sort((a, b) => b.start - a.start);
 
-  for (const { id, start, end, className } of sorted) {
+  for (const { id, start, end, className, color } of sorted) {
     const startPos = findNodeAtOffset(container, start);
     const endPos = findNodeAtOffset(container, end);
     if (!startPos || !endPos) continue;
@@ -95,6 +96,7 @@ export function applyHighlightMarks(container: HTMLElement, ranges: HighlightRan
     const mark = document.createElement('mark');
     mark.dataset.highlightId = String(id);
     mark.className = className ?? 'resume-highlight';
+    if (color) mark.style.backgroundColor = color;
 
     try {
       const contents = range.extractContents();

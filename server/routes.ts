@@ -5,7 +5,7 @@ import { db } from "@db";
 import { resumes, jobOffers, comments, networkInvitations, networkConnections, users, passwordResetTokens, passwordSchema, notifications, highlights } from "@db/schema";
 import { randomBytes } from "crypto";
 import { sendPasswordResetEmail } from "./resend";
-import { eq, and, or, desc, inArray, not, ilike, exists, sql } from "drizzle-orm";
+import { eq, and, or, desc, inArray, not, ilike, exists, sql, isNull } from "drizzle-orm";
 import bodyParser from "body-parser";
 import multer from "multer";
 import path from "path";
@@ -100,6 +100,36 @@ async function canViewResume(resume: { userId: number; isPublic: boolean | null;
     .limit(1);
 
   return !!connection;
+}
+
+// A small, visually-distinct palette for auto-assigning highlight colors to
+// users who haven't picked their own. Deterministic by user id, so the same
+// person always gets the same color without needing any setup.
+const HIGHLIGHT_COLOR_PALETTE = [
+  '#f59e0b', // amber
+  '#3b82f6', // blue
+  '#ec4899', // pink
+  '#10b981', // emerald
+  '#8b5cf6', // violet
+  '#f97316', // orange
+  '#06b6d4', // cyan
+  '#ef4444', // red
+];
+
+function highlightColorForUser(userId: number, customColor: string | null | undefined): string {
+  return customColor || HIGHLIGHT_COLOR_PALETTE[userId % HIGHLIGHT_COLOR_PALETTE.length];
+}
+
+// Masks a comment's author identity when it's anonymous and the viewer isn't
+// the resume owner (and isn't the author themselves).
+function maskCommentIdentity<T extends { userId: number; isAnonymous: boolean | null; username: string | null; firstName: string | null; lastName: string | null; profilePictureUrl: string | null }>(
+  comment: T,
+  viewerId: number | undefined,
+  resumeOwnerId: number
+): T {
+  const viewerCanSeeIdentity = viewerId === comment.userId || viewerId === resumeOwnerId;
+  if (!comment.isAnonymous || viewerCanSeeIdentity) return comment;
+  return { ...comment, username: null, firstName: null, lastName: null, profilePictureUrl: null };
 }
 
 export function registerRoutes(app: Express): Server {
@@ -314,10 +344,16 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      // Delete all comments associated with the resume first
+      // Delete all comments associated with the resume first (this covers
+      // highlight-thread comments too, since they also carry resumeId)
       await db
         .delete(comments)
         .where(eq(comments.resumeId, resumeId));
+
+      // Delete all highlights associated with the resume
+      await db
+        .delete(highlights)
+        .where(eq(highlights.resumeId, resumeId));
 
       // Delete all job offers associated with the resume
       await db
@@ -481,6 +517,30 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Sets the color used for this user's highlights on resumes (null = auto-assigned)
+  app.patch("/api/user/highlight-color", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    const { highlightColor } = req.body;
+    if (highlightColor !== null && !/^#[0-9a-fA-F]{6}$/.test(highlightColor)) {
+      return res.status(400).json({ error: "highlightColor must be a hex color like #f59e0b, or null" });
+    }
+
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set({ highlightColor })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      req.user = updatedUser;
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating highlight color:", error);
+      res.status(500).json({ error: "Failed to update highlight color" });
     }
   });
 
@@ -774,179 +834,184 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Comment routes
+  // Comment routes. A comment with a highlightId belongs to that highlight's
+  // thread; otherwise it's a resume-level comment (shown in "Show Comments").
   app.post("/api/resumes/:id/comments", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
-    // Check if user has access to comment
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
-
-    if (!resume) return res.sendStatus(404);
-
-    // Only allow comments if user is owner or resume is in collaborate mode
-    if (resume.userId !== req.user.id && resume.mode !== 'collaborate') {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-
-    const { content, parentId } = req.body;
-    const [comment] = await db
-      .insert(comments)
-      .values({
-        resumeId: req.params.id,
-        userId: req.user.id,
-        content,
-        parentId: parentId || null,
-      })
-      .returning();
-
-    // Notify the resume owner about the new comment
-    if (resume.userId !== req.user.id) {
-      await createNotification(
-        resume.userId,
-        'comment',
-        `${req.user.username} commented on your resume "${resume.title}"`,
-        '/'
-      );
-    }
-
-    // Notify the parent comment's author if this is a reply
-    if (parentId) {
-      const [parentComment] = await db
+    try {
+      const [resume] = await db
         .select()
-        .from(comments)
-        .where(eq(comments.id, parentId))
+        .from(resumes)
+        .where(eq(resumes.id, req.params.id))
         .limit(1);
 
-      if (parentComment && parentComment.userId !== req.user.id && parentComment.userId !== resume.userId) {
+      if (!resume) return res.sendStatus(404);
+
+      // Only allow comments if user is owner or resume is in collaborate mode
+      if (resume.userId !== req.user.id && resume.mode !== 'collaborate') {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const { content, parentId, highlightId, suggestedText, isAnonymous } = req.body;
+      if (!content) return res.status(400).json({ error: "content is required" });
+
+      if (highlightId) {
+        const [highlight] = await db
+          .select()
+          .from(highlights)
+          .where(eq(highlights.id, highlightId))
+          .limit(1);
+        if (!highlight || highlight.resumeId !== req.params.id) {
+          return res.status(404).json({ error: "Highlight not found" });
+        }
+      }
+
+      const [comment] = await db
+        .insert(comments)
+        .values({
+          resumeId: req.params.id,
+          userId: req.user.id,
+          content,
+          parentId: parentId || null,
+          highlightId: highlightId || null,
+          suggestedText: suggestedText || null,
+          isAnonymous: !!isAnonymous,
+        })
+        .returning();
+
+      // Notify the resume owner about the new comment
+      if (resume.userId !== req.user.id) {
         await createNotification(
-          parentComment.userId,
+          resume.userId,
           'comment',
-          `${req.user.username} replied to your comment on "${resume.title}"`,
+          highlightId
+            ? `${req.user.username} commented on a highlight in your resume "${resume.title}"`
+            : `${req.user.username} commented on your resume "${resume.title}"`,
           '/'
         );
       }
-    }
 
-    res.json(comment);
+      // Notify the parent comment's author if this is a reply
+      if (parentId) {
+        const [parentComment] = await db
+          .select()
+          .from(comments)
+          .where(eq(comments.id, parentId))
+          .limit(1);
+
+        if (parentComment && parentComment.userId !== req.user.id && parentComment.userId !== resume.userId) {
+          await createNotification(
+            parentComment.userId,
+            'comment',
+            `${req.user.username} replied to your comment on "${resume.title}"`,
+            '/'
+          );
+        }
+      }
+
+      res.json(comment);
+    } catch (error) {
+      console.error('Error creating comment:', error);
+      res.status(500).json({ error: 'Failed to create comment' });
+    }
   });
 
   app.patch("/api/resumes/:resumeId/comments/:commentId", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
-    const { content } = req.body;
-    const commentId = parseInt(req.params.commentId);
+    try {
+      const { content, suggestedText, isAnonymous } = req.body;
+      const commentId = parseInt(req.params.commentId);
 
-    // First check if the comment exists and belongs to the user
-    const [existingComment] = await db
-      .select()
-      .from(comments)
-      .where(eq(comments.id, commentId))
-      .limit(1);
+      const [existingComment] = await db
+        .select()
+        .from(comments)
+        .where(eq(comments.id, commentId))
+        .limit(1);
 
-    if (!existingComment) return res.sendStatus(404);
-    if (existingComment.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
+      if (!existingComment) return res.sendStatus(404);
+      if (existingComment.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
 
-    const [updatedComment] = await db
-      .update(comments)
-      .set({ content })
-      .where(eq(comments.id, commentId))
-      .returning();
+      const [updatedComment] = await db
+        .update(comments)
+        .set({
+          content: content ?? existingComment.content,
+          suggestedText: suggestedText !== undefined ? suggestedText || null : existingComment.suggestedText,
+          isAnonymous: isAnonymous !== undefined ? !!isAnonymous : existingComment.isAnonymous,
+          updatedAt: new Date(),
+        })
+        .where(eq(comments.id, commentId))
+        .returning();
 
-    res.json(updatedComment);
+      res.json(updatedComment);
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      res.status(500).json({ error: 'Failed to update comment' });
+    }
   });
 
   app.get("/api/resumes/:id/comments", async (req, res) => {
-    const [resume] = await db
-      .select()
-      .from(resumes)
-      .where(eq(resumes.id, req.params.id))
-      .limit(1);
-
-    if (!resume) return res.sendStatus(404);
-    
-    // If the user is the owner, always allow access
-    if (req.user && resume.userId === req.user.id) {
-      // Continue to fetch comments
-    }
-    // If resume is not public (hidden), only the owner can access it
-    else if (!resume.isPublic) {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-    // If accessType is 'everyone', allow anyone to view when resume is public
-    else if (resume.accessType === 'everyone') {
-      // Continue to fetch comments
-    }
-    // If accessType is 'connections', check if users are connected
-    else {
-      // First make sure the user is authenticated
-      if (!req.user) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-      
-      // Check if the users are connected
-      const [connection] = await db
+    try {
+      const [resume] = await db
         .select()
-        .from(networkConnections)
-        .where(
-          or(
-            and(
-              eq(networkConnections.userId1, req.user.id),
-              eq(networkConnections.userId2, resume.userId)
-            ),
-            and(
-              eq(networkConnections.userId1, resume.userId),
-              eq(networkConnections.userId2, req.user.id)
-            )
-          )
-        )
+        .from(resumes)
+        .where(eq(resumes.id, req.params.id))
         .limit(1);
 
-      if (!connection) {
+      if (!resume) return res.sendStatus(404);
+      if (!(await canViewResume(resume, req.user))) {
         return res.status(403).json({ error: "Unauthorized" });
       }
+
+      // ?highlightId=X scopes to that highlight's thread; otherwise this
+      // returns resume-level comments only (highlightId IS NULL).
+      const highlightIdParam = req.query.highlightId ? parseInt(req.query.highlightId as string) : null;
+
+      const allComments = await db
+        .select({
+          id: comments.id,
+          resumeId: comments.resumeId,
+          content: comments.content,
+          userId: comments.userId,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profilePictureUrl: users.profilePictureUrl,
+          parentId: comments.parentId,
+          highlightId: comments.highlightId,
+          suggestedText: comments.suggestedText,
+          isAnonymous: comments.isAnonymous,
+          createdAt: comments.createdAt,
+          updatedAt: comments.updatedAt,
+        })
+        .from(comments)
+        .leftJoin(users, eq(comments.userId, users.id))
+        .where(
+          and(
+            eq(comments.resumeId, req.params.id),
+            highlightIdParam ? eq(comments.highlightId, highlightIdParam) : isNull(comments.highlightId)
+          )
+        )
+        .orderBy(comments.createdAt);
+
+      const maskedComments = allComments.map((c) => maskCommentIdentity(c, req.user?.id, resume.userId));
+
+      // Organize comments into threads
+      const threadedComments = maskedComments.reduce((acc: any, comment) => {
+        if (!comment.parentId) {
+          acc[comment.id] = { ...comment, replies: [] };
+        } else if (acc[comment.parentId]) {
+          acc[comment.parentId].replies.push(comment);
+        }
+        return acc;
+      }, {});
+
+      res.json(Object.values(threadedComments));
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      res.status(500).json({ error: 'Failed to fetch comments' });
     }
-
-    // Fetch comments with their replies and profile pictures
-    const allComments = await db
-      .select({
-        id: comments.id,
-        content: comments.content,
-        userId: comments.userId,
-        username: users.username,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        profilePictureUrl: users.profilePictureUrl,
-        parentId: comments.parentId,
-        createdAt: comments.createdAt,
-      })
-      .from(comments)
-      .leftJoin(users, eq(comments.userId, users.id))
-      .where(eq(comments.resumeId, req.params.id))
-      .orderBy(comments.createdAt);
-
-    // Organize comments into threads
-    const threadedComments = allComments.reduce((acc: any, comment) => {
-      if (!comment.parentId) {
-        // This is a root comment
-        acc[comment.id] = {
-          ...comment,
-          replies: [],
-        };
-      } else if (acc[comment.parentId]) {
-        // This is a reply
-        acc[comment.parentId].replies.push(comment);
-      }
-      return acc;
-    }, {});
-
-    // Convert to array and only return root comments with their replies
-    const rootComments = Object.values(threadedComments);
-
-    res.json(rootComments);
   });
 
   app.delete("/api/resumes/:resumeId/comments/:commentId", async (req, res) => {
@@ -994,7 +1059,10 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Highlight routes (text-anchored comments and suggested edits)
+  // Highlight routes. A highlight is just an anchor (where the text range
+  // is); its comment thread lives in `comments` via highlightId. Selecting
+  // text that overlaps an existing highlight adds a reply to that thread
+  // instead of creating a second, overlapping mark.
   app.post("/api/resumes/:id/highlights", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
@@ -1012,22 +1080,51 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      const { pageNumber, startOffset, endOffset, quotedText, comment, suggestedText } = req.body;
+      const { pageNumber, startOffset, endOffset, quotedText, comment, suggestedText, isAnonymous } = req.body;
       if (startOffset == null || endOffset == null || !quotedText || !comment) {
         return res.status(400).json({ error: "startOffset, endOffset, quotedText, and comment are required" });
       }
 
-      const [highlight] = await db
-        .insert(highlights)
+      // Look for an existing highlight covering an overlapping range on the same page
+      const candidateHighlights = await db
+        .select()
+        .from(highlights)
+        .where(
+          and(
+            eq(highlights.resumeId, req.params.id),
+            pageNumber == null ? isNull(highlights.pageNumber) : eq(highlights.pageNumber, pageNumber)
+          )
+        );
+
+      const overlapping = candidateHighlights.find(
+        (h) => startOffset < h.endOffset && endOffset > h.startOffset
+      );
+
+      let highlight = overlapping;
+      if (!highlight) {
+        const [newHighlight] = await db
+          .insert(highlights)
+          .values({
+            resumeId: req.params.id,
+            userId: req.user.id,
+            pageNumber: pageNumber ?? null,
+            startOffset,
+            endOffset,
+            quotedText,
+          })
+          .returning();
+        highlight = newHighlight;
+      }
+
+      const [newComment] = await db
+        .insert(comments)
         .values({
           resumeId: req.params.id,
           userId: req.user.id,
-          pageNumber: pageNumber ?? null,
-          startOffset,
-          endOffset,
-          quotedText,
-          comment,
+          highlightId: highlight.id,
+          content: comment,
           suggestedText: suggestedText || null,
+          isAnonymous: !!isAnonymous,
         })
         .returning();
 
@@ -1042,7 +1139,7 @@ export function registerRoutes(app: Express): Server {
         );
       }
 
-      res.json(highlight);
+      res.json({ highlight, comment: newComment, merged: !!overlapping });
     } catch (error) {
       console.error('Error creating highlight:', error);
       res.status(500).json({ error: 'Failed to create highlight' });
@@ -1067,15 +1164,11 @@ export function registerRoutes(app: Express): Server {
           id: highlights.id,
           resumeId: highlights.resumeId,
           userId: highlights.userId,
-          username: users.username,
-          firstName: users.firstName,
-          lastName: users.lastName,
+          creatorHighlightColor: users.highlightColor,
           pageNumber: highlights.pageNumber,
           startOffset: highlights.startOffset,
           endOffset: highlights.endOffset,
           quotedText: highlights.quotedText,
-          comment: highlights.comment,
-          suggestedText: highlights.suggestedText,
           status: highlights.status,
           createdAt: highlights.createdAt,
           updatedAt: highlights.updatedAt,
@@ -1085,42 +1178,38 @@ export function registerRoutes(app: Express): Server {
         .where(eq(highlights.resumeId, req.params.id))
         .orderBy(highlights.createdAt);
 
-      res.json(resumeHighlights);
+      if (resumeHighlights.length === 0) return res.json([]);
+
+      // A lightweight comment count per highlight, for a badge -- the full
+      // thread is fetched on demand (GET .../comments?highlightId=X) only
+      // when a highlight is actually opened.
+      const highlightIds = resumeHighlights.map((h) => h.id);
+      const counts = await db
+        .select({ highlightId: comments.highlightId, count: sql<number>`count(*)::int` })
+        .from(comments)
+        .where(inArray(comments.highlightId, highlightIds))
+        .groupBy(comments.highlightId);
+      const countByHighlight = new Map(counts.map((c) => [c.highlightId, c.count]));
+
+      const result = resumeHighlights.map((h) => ({
+        id: h.id,
+        resumeId: h.resumeId,
+        userId: h.userId,
+        pageNumber: h.pageNumber,
+        startOffset: h.startOffset,
+        endOffset: h.endOffset,
+        quotedText: h.quotedText,
+        status: h.status,
+        createdAt: h.createdAt,
+        updatedAt: h.updatedAt,
+        color: highlightColorForUser(h.userId, h.creatorHighlightColor),
+        commentCount: countByHighlight.get(h.id) ?? 0,
+      }));
+
+      res.json(result);
     } catch (error) {
       console.error('Error fetching highlights:', error);
       res.status(500).json({ error: 'Failed to fetch highlights' });
-    }
-  });
-
-  app.patch("/api/resumes/:resumeId/highlights/:highlightId", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-
-    try {
-      const highlightId = parseInt(req.params.highlightId);
-      const [existingHighlight] = await db
-        .select()
-        .from(highlights)
-        .where(eq(highlights.id, highlightId))
-        .limit(1);
-
-      if (!existingHighlight) return res.sendStatus(404);
-      if (existingHighlight.userId !== req.user.id) return res.status(403).json({ error: "Unauthorized" });
-
-      const { comment, suggestedText } = req.body;
-      const [updatedHighlight] = await db
-        .update(highlights)
-        .set({
-          comment: comment ?? existingHighlight.comment,
-          suggestedText: suggestedText !== undefined ? suggestedText || null : existingHighlight.suggestedText,
-          updatedAt: new Date(),
-        })
-        .where(eq(highlights.id, highlightId))
-        .returning();
-
-      res.json(updatedHighlight);
-    } catch (error) {
-      console.error('Error updating highlight:', error);
-      res.status(500).json({ error: 'Failed to update highlight' });
     }
   });
 
@@ -1183,6 +1272,8 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ error: "Unauthorized" });
       }
 
+      // Comments reference highlights, so their thread must go first
+      await db.delete(comments).where(eq(comments.highlightId, highlightId));
       await db.delete(highlights).where(eq(highlights.id, highlightId));
       res.json({ message: "Highlight deleted successfully" });
     } catch (error) {
