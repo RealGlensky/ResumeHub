@@ -39,6 +39,14 @@
   cursor: pointer;
 }
 
+/* <mark> has its own browser-default text color that isn't covered by the
+   ".textLayer span" transparency rule above (mark isn't a span) -- without
+   this, highlighted PDF text renders visibly on top of the canvas's own
+   rendering of that same text, looking like duplicated/overlapping text. */
+.textLayer .resume-highlight {
+  color: transparent;
+}
+
 .resume-highlight[data-status="accepted"] {
   background-color: rgba(74, 222, 128, 0.4);
 }
