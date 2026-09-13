@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getSelectionOffsets, clearHighlightMarks, applyHighlightMarks } from "@/lib/text-highlighting";
+import { buildPageTextGeometry, offsetAtPoint, type PageTextGeometry } from "@/lib/pdf-text-geometry";
 
 // Configure worker
 const workerSrc = new URL(
@@ -59,6 +60,8 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
   const textLayerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const docxContentRef = useRef<HTMLDivElement | null>(null);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
+  const pageGeometryRef = useRef<Map<number, PageTextGeometry>>(new Map());
+  const dragStartRef = useRef<{ pageNum: number; x: number; y: number } | null>(null);
 
   const isOwner = user?.id === resume.userId;
   const canAnnotate = isOwner || mode === "collaborate";
@@ -199,6 +202,9 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
               viewport,
             });
             await textLayer.render();
+            // Capture each span's real rendered geometry now that layout has
+            // settled, for accurate geometric hit-testing during selection.
+            pageGeometryRef.current.set(pageNum, buildPageTextGeometry(textLayerDiv));
           }
         }
       }
@@ -242,33 +248,61 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightList, isDocx, isLoading, loadError, numPages, docxHtml]);
 
+  // DOCX is normal HTML flow, where the browser's native Selection/Range is
+  // reliable -- keep using it there. PDF's text layer is a pile of
+  // absolutely-positioned spans, where native selection can misjudge
+  // boundaries (especially across varying font sizes), so that path is
+  // handled separately via handleMouseDown/handlePdfMouseUp below.
   const handleMouseUp = () => {
-    if (!canAnnotate || isDocx === undefined) return;
+    if (!canAnnotate || !isDocx) return;
 
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
+    const container = docxContentRef.current;
+    if (!container) return;
+    const offsets = getSelectionOffsets(container);
+    if (!offsets) return;
+    const rect = range.getBoundingClientRect();
+    setPendingSelection({ pageNumber: null, start: offsets.start, end: offsets.end, text: offsets.text, x: rect.right, y: rect.bottom });
+  };
 
-    if (isDocx) {
-      const container = docxContentRef.current;
-      if (!container) return;
-      const offsets = getSelectionOffsets(container);
-      if (!offsets) return;
-      const rect = range.getBoundingClientRect();
-      setPendingSelection({ pageNumber: null, start: offsets.start, end: offsets.end, text: offsets.text, x: rect.right, y: rect.bottom });
-      return;
-    }
-
+  const handlePdfMouseDown = (event: React.MouseEvent) => {
+    if (!canAnnotate || isDocx) return;
     for (let pageNum = 1; pageNum <= numPages; pageNum++) {
       const container = textLayerRefs.current[pageNum - 1];
-      if (!container || !container.contains(range.startContainer)) continue;
-      const offsets = getSelectionOffsets(container);
-      if (!offsets) return;
-      const rect = range.getBoundingClientRect();
-      setPendingSelection({ pageNumber: pageNum, start: offsets.start, end: offsets.end, text: offsets.text, x: rect.right, y: rect.bottom });
-      return;
+      if (!container) continue;
+      const rect = container.getBoundingClientRect();
+      if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) {
+        dragStartRef.current = { pageNum, x: event.clientX, y: event.clientY };
+        return;
+      }
     }
+    dragStartRef.current = null;
+  };
+
+  const handlePdfMouseUp = (event: React.MouseEvent) => {
+    if (!canAnnotate || isDocx) return;
+    const dragStart = dragStartRef.current;
+    dragStartRef.current = null;
+    if (!dragStart) return;
+
+    // Require an actual drag, not just a click
+    if (Math.abs(event.clientX - dragStart.x) < 3 && Math.abs(event.clientY - dragStart.y) < 3) return;
+
+    const geometry = pageGeometryRef.current.get(dragStart.pageNum);
+    if (!geometry || geometry.items.length === 0) return;
+
+    let start = offsetAtPoint(geometry.items, dragStart.x, dragStart.y);
+    let end = offsetAtPoint(geometry.items, event.clientX, event.clientY);
+    if (start > end) [start, end] = [end, start];
+    if (start === end) return;
+
+    const quotedText = geometry.fullText.slice(start, end);
+    if (!quotedText.trim()) return;
+
+    setPendingSelection({ pageNumber: dragStart.pageNum, start, end, text: quotedText, x: event.clientX, y: event.clientY });
   };
 
   const handleContentClick = (event: React.MouseEvent) => {
@@ -356,7 +390,14 @@ export function ResumeViewer({ resume, mode }: ResumeViewerProps) {
             </p>
           )}
 
-          <div className="flex-1 overflow-y-auto bg-muted rounded-lg relative mt-2" onMouseUp={handleMouseUp}>
+          <div
+            className="flex-1 overflow-y-auto bg-muted rounded-lg relative mt-2"
+            onMouseDown={handlePdfMouseDown}
+            onMouseUp={(event) => {
+              handleMouseUp();
+              handlePdfMouseUp(event);
+            }}
+          >
             <div className="p-4">
               {loadError ? (
                 <div className="flex items-center justify-center h-full p-4 text-destructive gap-2">
